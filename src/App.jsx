@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TripProvider } from "./contexts/TripContext";
+import { LangProvider } from "./contexts/LangContext";
 import LoginPage from "./components/LoginPage";
 import MainLayout from "./components/MainLayout";
 import "./App.css";
@@ -28,8 +29,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <LangProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </LangProvider>
   );
 }

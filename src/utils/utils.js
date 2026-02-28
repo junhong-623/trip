@@ -6,12 +6,26 @@ export function formatAmount(amount, currency = "USD") {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount || 0);
 }
 
+/**
+ * Parse a numeric string to a precise integer-safe float.
+ * Uses Math.round(x * 100) / 100 to avoid IEEE 754 drift (e.g. 29999.999999).
+ */
 export function parseAmount(str) {
   const n = parseFloat(String(str).replace(/[^0-9.-]/g, ""));
-  return isNaN(n) ? 0 : n;
+  if (isNaN(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Round any intermediate calculation result to 2 decimal places.
+ * Use this when dividing (e.g. splitting among people).
+ */
+export function roundMoney(n) {
+  return Math.round(n * 100) / 100;
 }
 
 // ─── Dates ────────────────────────────────────────────────────────────────────
@@ -51,31 +65,32 @@ export function computeBalances(receipts, people) {
   receipts.forEach(receipt => {
     const payerId = receipt.payerId;
     const items = receipt.items || [];
+    const total = parseAmount(receipt.totalAmount);
 
-    // If no items, split total equally among participants
     if (items.length === 0) {
       const parts = receipt.participants || [];
       if (parts.length === 0) return;
-      const share = (receipt.totalAmount || 0) / parts.length;
-      if (bal[payerId]) bal[payerId].paid += receipt.totalAmount || 0;
+      const share = roundMoney(total / parts.length);
+      if (bal[payerId]) bal[payerId].paid = roundMoney(bal[payerId].paid + total);
       parts.forEach(pid => {
-        if (bal[pid]) bal[pid].owed += share;
+        if (bal[pid]) bal[pid].owed = roundMoney(bal[pid].owed + share);
       });
     } else {
-      if (bal[payerId]) bal[payerId].paid += receipt.totalAmount || 0;
+      if (bal[payerId]) bal[payerId].paid = roundMoney(bal[payerId].paid + total);
       items.forEach(item => {
         const eaters = item.eaters || [];
         if (eaters.length === 0) return;
-        const share = (item.price || 0) / eaters.length;
+        const itemPrice = parseAmount(item.price);
+        const share = roundMoney(itemPrice / eaters.length);
         eaters.forEach(pid => {
-          if (bal[pid]) bal[pid].owed += share;
+          if (bal[pid]) bal[pid].owed = roundMoney(bal[pid].owed + share);
         });
       });
     }
   });
 
   Object.keys(bal).forEach(id => {
-    bal[id].net = bal[id].paid - bal[id].owed;
+    bal[id].net = roundMoney(bal[id].paid - bal[id].owed);
   });
 
   return bal;
@@ -103,12 +118,12 @@ export function computeDebts(balances) {
   const d = debtors.map(x => ({ ...x }));
 
   while (ci < c.length && di < d.length) {
-    const amount = Math.min(c[ci].amount, d[di].amount);
+    const amount = roundMoney(Math.min(c[ci].amount, d[di].amount));
     if (amount > 0.01) {
-      debts.push({ fromId: d[di].id, toId: c[ci].id, amount: +amount.toFixed(2) });
+      debts.push({ fromId: d[di].id, toId: c[ci].id, amount });
     }
-    c[ci].amount -= amount;
-    d[di].amount -= amount;
+    c[ci].amount = roundMoney(c[ci].amount - amount);
+    d[di].amount = roundMoney(d[di].amount - amount);
     if (c[ci].amount < 0.01) ci++;
     if (d[di].amount < 0.01) di++;
   }

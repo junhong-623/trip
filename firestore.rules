@@ -1,7 +1,13 @@
-// firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Usernames: public read (for username availability check), write only by owner
+    match /usernames/{uid} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update, delete: if request.auth != null && request.auth.uid == uid;
+    }
 
     // Trips: user can only access their own trips
     match /trips/{tripId} {
@@ -10,7 +16,6 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.createdBy == request.auth.uid;
 
-      // Sub-collections: accessible if parent trip belongs to user
       match /people/{personId} {
         allow read, write: if request.auth != null
           && get(/databases/$(database)/documents/trips/$(tripId)).data.createdBy == request.auth.uid;
