@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useTrip } from "../../contexts/TripContext";
+import { useLang } from "../../contexts/LangContext";
 import { subscribePeople, addPerson, updatePerson, deletePerson } from "../../services/firestore";
-import { dicebearUrl, formatDate } from "../../utils/utils";
+import { dicebearUrl } from "../../utils/utils";
 import PersonModal from "./PersonModal";
 import "./PeoplePage.css";
 
 export default function PeoplePage({ toast }) {
   const { activeTrip } = useTrip();
+  const { tr, t } = useLang();
   const [people, setPeople] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editPerson, setEditPerson] = useState(null);
@@ -20,10 +22,10 @@ export default function PeoplePage({ toast }) {
     try {
       if (editPerson) {
         await updatePerson(activeTrip.id, editPerson.id, data);
-        toast.show("Person updated ✓", "success");
+        toast.show(tr.personUpdated, "success");
       } else {
         await addPerson(activeTrip.id, data);
-        toast.show("Person added ✓", "success");
+        toast.show(tr.personAdded, "success");
       }
       setShowModal(false);
       setEditPerson(null);
@@ -33,38 +35,42 @@ export default function PeoplePage({ toast }) {
   };
 
   const handleDelete = async (person) => {
-    if (!confirm(`Remove ${person.name}?`)) return;
+    if (!confirm(t(tr.confirmRemove, person.name))) return;
     await deletePerson(activeTrip.id, person.id);
-    toast.show("Person removed");
+    toast.show(tr.personRemoved);
   };
 
   if (!activeTrip) return (
     <div className="empty-state">
       <div className="empty-state-icon">✈️</div>
-      <div className="empty-state-title">No trip selected</div>
-      <div className="empty-state-text">Please select or create a trip first.</div>
+      <div className="empty-state-title">{tr.noTripSelected}</div>
+      <div className="empty-state-text">{tr.selectTripFirst}</div>
     </div>
   );
+
+  const countLabel = people.length === 1
+    ? t(tr.participants, people.length)
+    : t(tr.participantsPlural, people.length);
 
   return (
     <div>
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
         <div>
-          <h1 className="page-title">People</h1>
-          <p className="page-subtitle">{people.length} participant{people.length !== 1 ? "s" : ""} in {activeTrip.name}</p>
+          <h1 className="page-title">{tr.peopleTitle}</h1>
+          <p className="page-subtitle">{countLabel} · {activeTrip.name}</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditPerson(null); setShowModal(true); }}>
-          + Add Person
+          + {tr.addPerson}
         </button>
       </div>
 
       {people.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">👤</div>
-          <div className="empty-state-title">No people yet</div>
-          <div className="empty-state-text">Add trip participants to start splitting expenses.</div>
+          <div className="empty-state-title">{tr.noPersonYet}</div>
+          <div className="empty-state-text">{tr.addParticipants}</div>
           <button className="btn btn-primary" style={{marginTop:16}} onClick={() => setShowModal(true)}>
-            Add First Person
+            {tr.addFirstPerson}
           </button>
         </div>
       ) : (

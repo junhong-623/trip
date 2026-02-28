@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { useTrip } from "../../contexts/TripContext";
+import { useLang } from "../../contexts/LangContext";
 import { subscribeReceipts, subscribePeople, deleteReceipt } from "../../services/firestore";
-import { formatAmount, formatDateShort } from "../../utils/utils";
+import { formatAmount } from "../../utils/utils";
 import ReceiptModal from "./ReceiptModal";
 import ReceiptCard from "./ReceiptCard";
 import "./ReceiptsPage.css";
 
 export default function ReceiptsPage({ toast }) {
   const { activeTrip } = useTrip();
+  const { tr, t } = useLang();
   const [receipts, setReceipts] = useState([]);
   const [people, setPeople] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -23,37 +25,41 @@ export default function ReceiptsPage({ toast }) {
   const totalSpend = receipts.reduce((s, r) => s + (r.totalAmount || 0), 0);
 
   const handleDelete = async (receipt) => {
-    if (!confirm("Delete this receipt?")) return;
+    if (!confirm(tr.confirmDeleteReceipt)) return;
     await deleteReceipt(activeTrip.id, receipt.id);
-    toast.show("Receipt deleted");
+    toast.show(tr.receiptDeleted);
   };
 
   if (!activeTrip) return (
     <div className="empty-state">
       <div className="empty-state-icon">✈️</div>
-      <div className="empty-state-title">No trip selected</div>
+      <div className="empty-state-title">{tr.noTripSelected}</div>
     </div>
   );
+
+  const subtitle = receipts.length === 1
+    ? t(tr.receiptsSubtitle, receipts.length, formatAmount(totalSpend, activeTrip.baseCurrency))
+    : t(tr.receiptsSubtitlePlural, receipts.length, formatAmount(totalSpend, activeTrip.baseCurrency));
 
   return (
     <div>
       <div className="receipts-header">
         <div>
-          <h1 className="page-title">Receipts</h1>
-          <p className="page-subtitle">{receipts.length} receipt{receipts.length!==1?"s":""} · {formatAmount(totalSpend, activeTrip.baseCurrency)} total</p>
+          <h1 className="page-title">{tr.receiptsTitle}</h1>
+          <p className="page-subtitle">{subtitle}</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditReceipt(null); setShowModal(true); }}>
-          + Add
+          + {tr.addReceipt}
         </button>
       </div>
 
       {receipts.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">🧾</div>
-          <div className="empty-state-title">No receipts yet</div>
-          <div className="empty-state-text">Add your first expense or upload a receipt photo.</div>
+          <div className="empty-state-title">{tr.noReceiptsYet}</div>
+          <div className="empty-state-text">{tr.addFirstExpense}</div>
           <button className="btn btn-primary" style={{marginTop:16}} onClick={() => setShowModal(true)}>
-            Add First Receipt
+            {tr.addFirstReceipt}
           </button>
         </div>
       ) : (

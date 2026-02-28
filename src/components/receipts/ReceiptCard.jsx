@@ -1,6 +1,8 @@
+import { useLang } from "../../contexts/LangContext";
 import { formatAmount, formatDateShort, dicebearUrl } from "../../utils/utils";
 
 export default function ReceiptCard({ receipt, people, currency, onEdit, onDelete }) {
+  const { tr, t } = useLang();
   const payer = people.find(p => p.id === receipt.payerId);
   const items = receipt.items || [];
   const participantIds = items.length > 0
@@ -16,7 +18,7 @@ export default function ReceiptCard({ receipt, people, currency, onEdit, onDelet
           {receipt.googleMapLink && (
             <a href={receipt.googleMapLink} target="_blank" rel="noopener"
               className="receipt-map-link" onClick={e => e.stopPropagation()}>
-              📍 View on map
+              {tr.viewOnMap}
             </a>
           )}
         </div>
@@ -49,7 +51,9 @@ export default function ReceiptCard({ receipt, people, currency, onEdit, onDelet
               </div>
             </div>
           ))}
-          {items.length > 3 && <div className="receipt-more">+{items.length - 3} more items</div>}
+          {items.length > 3 && (
+            <div className="receipt-more">{t(tr.moreItems, items.length - 3)}</div>
+          )}
         </div>
       )}
 
@@ -60,11 +64,11 @@ export default function ReceiptCard({ receipt, people, currency, onEdit, onDelet
             return p ? <img key={pid} src={p.avatarUrl || dicebearUrl(p.name)} alt={p.name}
               className="avatar" style={{width:24,height:24,marginLeft:-6,border:"2px solid white"}} title={p.name} /> : null;
           })}
-          {participantIds.length > 6 && <span style={{fontSize:11,color:"var(--ink-muted)",marginLeft:4}}>+{participantIds.length-6}</span>}
+          {participantIds.length > 6 && (
+            <span style={{fontSize:11,color:"var(--ink-muted)",marginLeft:4}}>+{participantIds.length-6}</span>
+          )}
         </div>
-        <div style={{display:"flex",gap:4}}>
-          <button className="btn btn-icon btn-sm" onClick={e => { e.stopPropagation(); onDelete(); }}>🗑</button>
-        </div>
+        <button className="btn btn-icon btn-sm" onClick={e => { e.stopPropagation(); onDelete(); }}>🗑</button>
       </div>
     </div>
   );

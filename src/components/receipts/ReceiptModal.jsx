@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useLang } from "../../contexts/LangContext";
 import { addReceipt, updateReceipt } from "../../services/firestore";
 import { analyzeReceipt } from "../../services/api";
 import { dicebearUrl, formatAmount, generateId, parseAmount } from "../../utils/utils";
@@ -6,72 +7,65 @@ import ItemEatersModal from "./ItemEatersModal";
 import "./ReceiptModal.css";
 
 export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast }) {
-  const [step, setStep] = useState("form"); // form | items
-  const [ocr, setOcr] = useState(null);
+  const { tr, t } = useLang();
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrFile, setOcrFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
+  // Items in SEPARATE state — prevents typing from losing focus
+  const [items, setItems] = useState([]);
+
   const [form, setForm] = useState({
-    restaurantName: "", date: new Date().toISOString().slice(0,10),
-    totalAmount: "", payerId: people[0]?.id || "",
+    restaurantName: "",
+    date: new Date().toISOString().slice(0, 10),
+    totalAmount: "",
+    payerId: people[0]?.id || "",
     participants: people.map(p => p.id),
-    googleMapLink: "", lat: "", lng: "",
-    items: [], ocrRawText: "",
+    googleMapLink: "",
+    lat: "",
+    lng: "",
+    ocrRawText: "",
   });
 
   useEffect(() => {
     if (receipt) {
       setForm({
         restaurantName: receipt.restaurantName || "",
-        date: receipt.date || new Date().toISOString().slice(0,10),
+        date: receipt.date || new Date().toISOString().slice(0, 10),
         totalAmount: receipt.totalAmount || "",
         payerId: receipt.payerId || people[0]?.id || "",
         participants: receipt.participants || people.map(p => p.id),
         googleMapLink: receipt.googleMapLink || "",
-        lat: receipt.lat || "", lng: receipt.lng || "",
-        items: receipt.items || [],
+        lat: receipt.lat || "",
+        lng: receipt.lng || "",
         ocrRawText: receipt.ocrRawText || "",
       });
+      setItems(receipt.items || []);
     }
   }, [receipt]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // OCR
-  const handleOCRUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setOcrFile(file);
-    setOcrLoading(true);
-    try {
-      const result = await analyzeReceipt(file);
-      setOcr(result);
-      // Pre-fill form with OCR data
-      if (result.restaurantName) set("restaurantName", result.restaurantName);
-      if (result.date) set("date", result.date);
-      if (result.totalAmount) set("totalAmount", result.totalAmount);
-      if (result.rawText) set("ocrRawText", result.rawText);
-      if (result.items?.length) {
-        set("items", result.items.map(item => ({
-          id: generateId(), name: item.name, price: item.price, eaters: []
-        })));
-      }
-      toast.show("Receipt analyzed! Please review.", "success");
-    } catch (err) {
-      toast.show("OCR failed — please fill in manually", "error");
-    } finally {
-      setOcrLoading(false);
-    }
-  };
+  // useCallback = stable function references, child inputs won't re-mount on parent re-render
+  const addItem = useCallback(() => {
+    setItems(prev => [...prev, { id: generateId(), name: "", price: "", eaters: [] }]);
+  }, []);
 
-  // Items management
-  const addItem = () => {
-    set("items", [...form.items, { id: generateId(), name: "", price: "", eaters: [] }]);
-  };
-  const removeItem = (id) => set("items", form.items.filter(i => i.id !== id));
-  const updateItem = (id, k, v) => set("items", form.items.map(i => i.id === id ? { ...i, [k]: v } : i));
+  const removeItem = useCallback((id) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+  }, []);
+
+  const updateItemName = useCallback((id, value) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, name: value } : i));
+  }, []);
+
+  const updateItemPrice = useCallback((id, value) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, price: value } : i));
+  }, []);
+
+  const updateItemEaters = useCallback((id, eaters) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, eaters } : i));
+  }, []);
 
   const toggleParticipant = (pid) => {
     set("participants", form.participants.includes(pid)
@@ -79,9 +73,32 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
       : [...form.participants, pid]);
   };
 
+  const handleOCRUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setOcrLoading(true);
+    try {
+      const result = await analyzeReceipt(file);
+      if (result.restaurantName) set("restaurantName", result.restaurantName);
+      if (result.date) set("date", result.date);
+      if (result.totalAmount) set("totalAmount", result.totalAmount);
+      if (result.rawText) set("ocrRawText", result.rawText);
+      if (result.items?.length) {
+        setItems(result.items.map(item => ({
+          id: generateId(), name: item.name, price: item.price, eaters: []
+        })));
+      }
+      toast.show(tr.receiptAnalyzed, "success");
+    } catch (err) {
+      toast.show(tr.ocrFailed, "error");
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.restaurantName || !form.totalAmount || !form.payerId) {
-      toast.show("Please fill in required fields");
+      toast.show(tr.fillRequired);
       return;
     }
     setSaving(true);
@@ -89,16 +106,16 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
       const data = {
         ...form,
         totalAmount: parseAmount(form.totalAmount),
-        items: form.items.map(i => ({ ...i, price: parseAmount(i.price) })),
+        items: items.map(i => ({ ...i, price: parseAmount(i.price) })),
         lat: form.lat ? Number(form.lat) : null,
         lng: form.lng ? Number(form.lng) : null,
       };
       if (receipt) {
         await updateReceipt(tripId, receipt.id, data);
-        toast.show("Receipt updated ✓", "success");
+        toast.show(tr.receiptUpdated, "success");
       } else {
         await addReceipt(tripId, data);
-        toast.show("Receipt saved ✓", "success");
+        toast.show(tr.receiptSaved, "success");
       }
       onClose();
     } catch (e) {
@@ -108,30 +125,30 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
     }
   };
 
-  const itemsTotal = form.items.reduce((s, i) => s + parseAmount(i.price), 0);
+  const itemsTotal = items.reduce((s, i) => s + parseAmount(i.price), 0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet receipt-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="modal-handle" />
         <div className="modal-header">
-          <h2 className="modal-title">{receipt ? "Edit Receipt" : "Add Receipt"}</h2>
+          <h2 className="modal-title">{receipt ? tr.editReceipt : tr.addReceipt}</h2>
           <button className="btn btn-icon" onClick={onClose}>✕</button>
         </div>
 
-        {/* OCR Upload Banner */}
         {!receipt && (
           <div className="ocr-banner">
             <div className="ocr-banner-text">
               <span className="ocr-icon">📷</span>
               <div>
-                <div style={{fontWeight:600,fontSize:14}}>Upload receipt photo</div>
-                <div style={{fontSize:12,color:"var(--ink-muted)"}}>Auto-fill with OCR analysis</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{tr.uploadReceiptPhoto}</div>
+                <div style={{ fontSize: 12, color: "var(--ink-muted)" }}>{tr.autoFillOCR}</div>
               </div>
             </div>
-            <label className="btn btn-secondary btn-sm" style={{cursor:"pointer"}}>
-              {ocrLoading ? "Analyzing…" : "Upload"}
-              <input type="file" accept="image/*" onChange={handleOCRUpload} style={{display:"none"}} disabled={ocrLoading} />
+            <label className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
+              {ocrLoading ? tr.analyzing : tr.uploadBtn}
+              <input type="file" accept="image/*" onChange={handleOCRUpload}
+                style={{ display: "none" }} disabled={ocrLoading} />
             </label>
           </div>
         )}
@@ -139,37 +156,36 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
         {ocrLoading && (
           <div className="ocr-loading">
             <div className="loading-spinner" />
-            <span>Analyzing receipt with Vision API…</span>
+            <span>{tr.analyzingText}</span>
           </div>
         )}
 
         <div className="receipt-form">
-          {/* Basic Info */}
           <div className="form-section">
             <div className="form-group">
-              <label className="form-label">Restaurant / Place *</label>
+              <label className="form-label">{tr.restaurantPlace}</label>
               <input className="form-input" value={form.restaurantName}
                 onChange={e => set("restaurantName", e.target.value)}
                 placeholder="Ichiran Ramen" />
             </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div className="form-group">
-                <label className="form-label">Date</label>
+                <label className="form-label">{tr.date}</label>
                 <input className="form-input" type="date" value={form.date}
                   onChange={e => set("date", e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">Total ({currency}) *</label>
-                <input className="form-input" type="number" step="0.01" value={form.totalAmount}
-                  onChange={e => set("totalAmount", e.target.value)} placeholder="0.00" />
+                <label className="form-label">{t(tr.total, currency)}</label>
+                <input className="form-input" type="number" step="0.01"
+                  value={form.totalAmount}
+                  onChange={e => set("totalAmount", e.target.value)}
+                  placeholder="0.00" />
               </div>
             </div>
           </div>
 
-          {/* Payer */}
           <div className="form-section">
-            <div className="section-title">Who Paid?</div>
+            <div className="section-title">{tr.whoPaid}</div>
             <div className="payer-row">
               {people.map(p => (
                 <button key={p.id} type="button"
@@ -182,46 +198,34 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             </div>
           </div>
 
-          {/* Items */}
           <div className="form-section">
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div className="section-title" style={{marginBottom:0}}>Items</div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>+ Add Item</button>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div className="section-title" style={{ marginBottom: 0 }}>{tr.items}</div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>
+                + {tr.addItem}
+              </button>
             </div>
 
-            {form.items.length === 0 ? (
-              <div style={{textAlign:"center",padding:"16px",color:"var(--ink-muted)",fontSize:13,background:"var(--sand)",borderRadius:8}}>
-                No items — total will be split among participants
+            {items.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "16px", color: "var(--ink-muted)", fontSize: 13, background: "var(--sand)", borderRadius: 8 }}>
+                {tr.noItemsNote}
               </div>
             ) : (
               <div className="items-list">
-                {form.items.map(item => (
-                  <div key={item.id} className="item-row">
-                    <input className="form-input item-name-input" value={item.name}
-                      onChange={e => updateItem(item.id, "name", e.target.value)}
-                      placeholder="Item name" />
-                    <input className="form-input item-price-input" type="number" step="0.01"
-                      value={item.price} onChange={e => updateItem(item.id, "price", e.target.value)}
-                      placeholder="0.00" />
-                    <button type="button" className="item-eaters-btn"
-                      onClick={() => setEditingItem(item)}>
-                      <div style={{display:"flex",alignItems:"center"}}>
-                        {item.eaters.length === 0 ? (
-                          <span style={{fontSize:12,color:"var(--ink-muted)"}}>👥</span>
-                        ) : item.eaters.slice(0,3).map(eid => {
-                          const p = people.find(x => x.id === eid);
-                          return p ? <img key={eid} src={p.avatarUrl || dicebearUrl(p.name)} alt={p.name}
-                            className="avatar" style={{width:22,height:22,marginLeft:-4,border:"2px solid white"}} /> : null;
-                        })}
-                        {item.eaters.length > 3 && <span style={{fontSize:10,marginLeft:2}}>+{item.eaters.length-3}</span>}
-                      </div>
-                    </button>
-                    <button type="button" className="btn btn-icon btn-sm" onClick={() => removeItem(item.id)}>✕</button>
-                  </div>
+                {items.map(item => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    people={people}
+                    onNameChange={updateItemName}
+                    onPriceChange={updateItemPrice}
+                    onRemove={removeItem}
+                    onEditEaters={setEditingItem}
+                  />
                 ))}
                 {itemsTotal > 0 && (
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"6px 0",borderTop:"1px dashed var(--sand-deep)"}}>
-                    <span style={{color:"var(--ink-muted)"}}>Items total</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "6px 0", borderTop: "1px dashed var(--sand-deep)" }}>
+                    <span style={{ color: "var(--ink-muted)" }}>{tr.itemsTotal}</span>
                     <span className="amount">{formatAmount(itemsTotal, currency)}</span>
                   </div>
                 )}
@@ -229,22 +233,21 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             )}
           </div>
 
-          {/* Participants (when no items) */}
-          {form.items.length === 0 && (
+          {items.length === 0 && (
             <div className="form-section">
-              <div className="section-title">Split Among</div>
+              <div className="section-title">{tr.splitAmong}</div>
               <div className="participants-row">
                 <button type="button" className="chip"
-                  style={{background:"var(--terracotta-pale)",color:"var(--terracotta)"}}
+                  style={{ background: "var(--terracotta-pale)", color: "var(--terracotta)" }}
                   onClick={() => set("participants", people.map(p => p.id))}>
-                  All
+                  {tr.all}
                 </button>
                 {people.map(p => (
                   <button key={p.id} type="button"
                     className={`chip ${form.participants.includes(p.id) ? "selected" : ""}`}
                     onClick={() => toggleParticipant(p.id)}>
                     <img src={p.avatarUrl || dicebearUrl(p.name)} alt={p.name}
-                      style={{width:16,height:16,borderRadius:"50%"}} />
+                      style={{ width: 16, height: 16, borderRadius: "50%" }} />
                     {p.name}
                   </button>
                 ))}
@@ -252,28 +255,28 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             </div>
           )}
 
-          {/* Map / Location */}
           <div className="form-section">
-            <div className="section-title">Location (optional)</div>
+            <div className="section-title">{tr.location}</div>
             <div className="form-group">
               <input className="form-input" value={form.googleMapLink}
                 onChange={e => set("googleMapLink", e.target.value)}
-                placeholder="Google Maps link" />
+                placeholder={tr.googleMapsLink} />
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <input className="form-input" type="number" step="any" value={form.lat}
-                onChange={e => set("lat", e.target.value)} placeholder="Latitude" />
-              <input className="form-input" type="number" step="any" value={form.lng}
-                onChange={e => set("lng", e.target.value)} placeholder="Longitude" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <input className="form-input" type="number" step="any"
+                value={form.lat} onChange={e => set("lat", e.target.value)}
+                placeholder={tr.latitude} />
+              <input className="form-input" type="number" step="any"
+                value={form.lng} onChange={e => set("lng", e.target.value)}
+                placeholder={tr.longitude} />
             </div>
           </div>
         </div>
 
-        {/* Save Button */}
-        <div style={{padding:"12px 0 4px",display:"flex",gap:10}}>
-          <button className="btn btn-secondary" style={{flex:1}} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" style={{flex:2}} onClick={handleSave} disabled={saving}>
-            {saving ? "Saving…" : receipt ? "Save Changes" : "Save Receipt"}
+        <div style={{ padding: "12px 0 4px", display: "flex", gap: 10 }}>
+          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>{tr.cancel}</button>
+          <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleSave} disabled={saving}>
+            {saving ? tr.saving : receipt ? tr.saveChanges : tr.saveReceipt}
           </button>
         </div>
 
@@ -282,13 +285,57 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             item={editingItem}
             people={people}
             onSave={(eaters) => {
-              updateItem(editingItem.id, "eaters", eaters);
+              updateItemEaters(editingItem.id, eaters);
               setEditingItem(null);
             }}
             onClose={() => setEditingItem(null)}
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// Separate component = stable DOM node = inputs keep focus while typing
+function ItemRow({ item, people, onNameChange, onPriceChange, onRemove, onEditEaters }) {
+  return (
+    <div className="item-row">
+      <input
+        className="form-input item-name-input"
+        value={item.name}
+        onChange={e => onNameChange(item.id, e.target.value)}
+        placeholder="Item name"
+      />
+      <input
+        className="form-input item-price-input"
+        type="number"
+        step="0.01"
+        value={item.price}
+        onChange={e => onPriceChange(item.id, e.target.value)}
+        placeholder="0.00"
+      />
+      <button type="button" className="item-eaters-btn" onClick={() => onEditEaters(item)}>
+        <div style={{ display: "flex", alignItems: "center", paddingLeft: 4 }}>
+          {item.eaters.length === 0 ? (
+            <span style={{ fontSize: 16 }}>👥</span>
+          ) : (
+            item.eaters.slice(0, 3).map(eid => {
+              const p = people.find(x => x.id === eid);
+              return p ? (
+                <img key={eid}
+                  src={p.avatarUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(p.name)}`}
+                  alt={p.name}
+                  style={{ width: 22, height: 22, borderRadius: "50%", marginLeft: -4, border: "2px solid white" }}
+                />
+              ) : null;
+            })
+          )}
+          {item.eaters.length > 3 && (
+            <span style={{ fontSize: 10, marginLeft: 2 }}>+{item.eaters.length - 3}</span>
+          )}
+        </div>
+      </button>
+      <button type="button" className="btn btn-icon btn-sm" onClick={() => onRemove(item.id)}>✕</button>
     </div>
   );
 }
