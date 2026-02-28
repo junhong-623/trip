@@ -1,0 +1,95 @@
+.receipt-modal-sheet {
+  padding-bottom: 24px;
+}
+.ocr-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--sky-pale);
+  border: 1.5px dashed var(--sky-light);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+.ocr-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ocr-icon { font-size: 24px; }
+.ocr-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--gold-pale);
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.receipt-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.form-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--sand-dark);
+}
+.form-section:last-child { border-bottom: none; }
+.payer-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.payer-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 20px;
+  border: 2px solid var(--sand-dark);
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.payer-btn.selected {
+  border-color: var(--terracotta);
+  background: var(--terracotta-pale);
+  color: var(--terracotta);
+}
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.item-name-input { flex: 1; }
+.item-price-input { width: 80px; flex-shrink: 0; }
+.item-eaters-btn {
+  width: 48px; height: 38px;
+  border: 1.5px solid var(--sand-deep);
+  border-radius: var(--radius-sm);
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+  padding-left: 8px;
+}
+.item-eaters-btn:hover { border-color: var(--terracotta); }
+.participants-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

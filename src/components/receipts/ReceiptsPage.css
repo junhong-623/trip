@@ -1,0 +1,99 @@
+.receipts-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.receipts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.receipt-card { cursor: pointer; }
+.receipt-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.receipt-card-left { flex: 1; min-width: 0; }
+.receipt-card-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.receipt-card-date {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+.receipt-map-link {
+  font-size: 12px;
+  color: var(--sky);
+  text-decoration: none;
+}
+.receipt-card-right { text-align: right; flex-shrink: 0; }
+.receipt-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.receipt-payer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.receipt-items-preview {
+  background: var(--sand);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.receipt-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.receipt-item-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.receipt-item-price {
+  font-size: 13px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.receipt-item-eaters {
+  display: flex;
+  flex-shrink: 0;
+}
+.receipt-more {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.receipt-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.receipt-participants {
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+}
