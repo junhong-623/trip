@@ -89,3 +89,13 @@
   justify-content: center;
 }
 .lightbox-map { color: #7ac; text-decoration: none; }
+
+.gallery-ios-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+  background: var(--sand);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  text-align: center;
+}

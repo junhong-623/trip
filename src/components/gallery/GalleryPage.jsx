@@ -101,17 +101,10 @@ export default function GalleryPage({ toast }) {
   const handleDownload = async (photo) => {
     const url = photo.imageUrl;
     const isVid = photo.isVideo || isVideoUrl(url);
-
-    if (!isVid) {
-      // For images: open in new tab so user can long-press save to camera roll
-      window.open(url, "_blank");
-      toast.show("长按图片 → 存储到相册", "info");
-      return;
-    }
-
-    // For videos: trigger blob download
     try {
-      const ext = url.match(/\.(mp4|mov|webm|avi)/i)?.[1] || "mp4";
+      const ext = isVid
+        ? (url.match(/\.(mp4|mov|webm|avi)/i)?.[1] || "mp4")
+        : (url.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1] || "jpg");
       const filename = `wandersplit_${photo.id || Date.now()}.${ext}`;
       const res = await fetch(url);
       const blob = await res.blob();
@@ -162,6 +155,12 @@ export default function GalleryPage({ toast }) {
           <input type="file" accept="image/*,video/*" onChange={handleFileSelect} style={{ display: "none" }} />
         </label>
       </div>
+
+      {photos.length > 0 && (
+        <div className="gallery-ios-hint">
+          📱 iPhone 用户：长按图片可直接存储到相册
+        </div>
+      )}
 
       {photos.length === 0 ? (
         <div className="empty-state">
