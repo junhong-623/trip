@@ -8,6 +8,7 @@ import "./ReceiptModal.css";
 
 export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast }) {
   const { tr, t } = useLang();
+  const isExisting = !!receipt?.id; // lock financial fields for existing receipts
   const [ocrLoading, setOcrLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingEatersItem, setEditingEatersItem] = useState(null);
@@ -46,8 +47,10 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const totalAmount = parseAmount(form.totalAmount);
-  const itemsTotal = items.reduce((s, i) => s + parseAmount(i.price), 0);
+  const itemsTotal = roundMoney(items.reduce((s, i) => s + parseAmount(i.price), 0));
   const itemsOverBudget = totalAmount > 0 && itemsTotal > totalAmount + 0.01;
+  // If items exist, they must sum exactly to totalAmount
+  const itemsMismatch = !isExisting && items.length > 0 && totalAmount > 0 && Math.abs(itemsTotal - totalAmount) > 0.01;
 
   const addItem = useCallback(() => {
     setItems(prev => [...prev, { id: generateId(), name: "", price: "", eaters: [] }]);
@@ -90,6 +93,9 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
     }
     if (itemsOverBudget) {
       toast.show(tr.itemsOverBudget || "Items total exceeds receipt amount", "error"); return;
+    }
+    if (itemsMismatch) {
+      toast.show(`明细合计 ${formatAmount(itemsTotal, currency)} 必须等于总金额 ${formatAmount(totalAmount, currency)}`, "error"); return;
     }
     setSaving(true);
     try {
@@ -167,22 +173,27 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               </div>
               <div className="form-group">
                 <label className="form-label">{t(tr.total, currency)}</label>
-                {/* inputmode="decimal" triggers numeric keypad on mobile */}
                 <input className="form-input" type="number" step="0.01"
                   inputMode="decimal"
                   value={form.totalAmount}
-                  onChange={e => set("totalAmount", e.target.value)}
-                  placeholder="0.00" />
+                  onChange={e => !isExisting && set("totalAmount", e.target.value)}
+                  placeholder="0.00"
+                  disabled={isExisting}
+                  style={isExisting ? { opacity: 0.6, cursor: "not-allowed" } : {}} />
+                {isExisting && <div className="form-hint">账单已建立，金额不可更改</div>}
               </div>
             </div>
 
             <div className="form-section">
               <div className="section-title">{tr.whoPaid}</div>
+              {isExisting && <div className="form-hint" style={{marginBottom:8}}>账单已建立，付款人不可更改</div>}
               <div className="payer-row">
                 {people.map(p => (
                   <button key={p.id} type="button"
                     className={`payer-btn ${form.payerId === p.id ? "selected" : ""}`}
-                    onClick={() => set("payerId", p.id)}>
+                    onClick={() => !isExisting && set("payerId", p.id)}
+                    disabled={isExisting}
+                    style={isExisting ? { opacity: form.payerId === p.id ? 1 : 0.4, cursor: "not-allowed" } : {}}>
                     <img src={p.avatarUrl || dicebearUrl(p.name)} alt={p.name} className="avatar avatar-sm" />
                     <span>{p.name}</span>
                   </button>
@@ -193,11 +204,18 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             <div className="form-section">
               <div className="items-section-header">
                 <div className="section-title" style={{ marginBottom: 0 }}>{tr.items}</div>
-                <button type="button" className="btn btn-secondary btn-sm items-edit-btn"
-                  onClick={() => setShowItemEditor(true)}>
-                  ✏ {tr.addItem || "Edit Items"}
-                  {items.length > 0 && <span className="items-count-badge">{items.length}</span>}
-                </button>
+                {!isExisting && (
+                  <button type="button"
+                    className={`btn btn-secondary btn-sm items-edit-btn`}
+                    onClick={() => {
+                      if (!totalAmount) { toast.show("请先填写总金额", "error"); return; }
+                      setShowItemEditor(true);
+                    }}
+                    style={!totalAmount ? { opacity: 0.4 } : {}}>
+                    ✏ {tr.addItem || "Edit Items"}
+                    {items.length > 0 && <span className="items-count-badge">{items.length}</span>}
+                  </button>
+                )}
               </div>
 
               {items.length === 0 ? (
@@ -223,14 +241,16 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                       </div>
                     </div>
                   ))}
-                  <div className={`items-total-row ${itemsOverBudget ? "over-budget" : ""}`}>
+                  <div className={`items-total-row ${itemsOverBudget ? "over-budget" : itemsMismatch ? "over-budget" : ""}`}>
                     <span>{tr.itemsTotal}</span>
                     <span className="amount">{formatAmount(itemsTotal, currency)}</span>
                     {totalAmount > 0 && (
                       <span className="items-budget-hint">
                         {itemsOverBudget
                           ? `⚠ ${tr.exceeds || "Exceeds"} ${formatAmount(itemsTotal - totalAmount, currency)}`
-                          : `✓ ${formatAmount(totalAmount - itemsTotal, currency)} ${tr.remaining || "remaining"}`}
+                          : itemsMismatch
+                            ? `⚠ 还差 ${formatAmount(totalAmount - itemsTotal, currency)}`
+                            : `✓ ${tr.remaining || "Matched"}`}
                       </span>
                     )}
                   </div>
@@ -276,7 +296,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
 
           <div style={{ padding: "12px 0 4px", display: "flex", gap: 10 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>{tr.cancel}</button>
-            <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleSave} disabled={saving || itemsOverBudget}>
+            <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleSave} disabled={saving || itemsOverBudget || itemsMismatch}>
               {saving ? tr.saving : receipt ? tr.saveChanges : tr.saveReceipt}
             </button>
           </div>

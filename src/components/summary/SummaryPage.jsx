@@ -188,18 +188,17 @@ export default function SummaryPage({ toast }) {
                     {tr.paid} {formatAmount(settled, currency)}
                     <span className="balance-sep">·</span>
                     {tr.owes} {formatAmount(owes, currency)}
-                    {advanced > 0 && (
-                      <span className="balance-advanced">
-                        <span className="balance-sep">·</span>
-                        垫付 {formatAmount(advanced, currency)}
-                      </span>
-                    )}
                   </div>
+                  {advanced > 0 && (
+                    <div className="balance-advanced">
+                      垫付 {formatAmount(advanced, currency)}
+                    </div>
+                  )}
                 </div>
                 <div className={`balance-net amount ${settled >= owes && owes > 0 ? "amount-positive" : owes > settled ? "amount-negative" : ""}`}>
                   {owes > 0
                     ? (settled >= owes ? "✓" : `-${formatAmount(roundMoney(owes - settled), currency)}`)
-                    : (advanced > 0 ? `+${formatAmount(advanced, currency)}` : "—")
+                    : "—"
                   }
                 </div>
               </div>
