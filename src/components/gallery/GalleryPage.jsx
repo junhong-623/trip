@@ -11,6 +11,15 @@ const isVideo = (file) => file && (VIDEO_TYPES.includes(file.type) || /\.(mp4|mo
 const isVideoUrl = (url) => url && /\.(mp4|mov|webm|avi)(\?|$)/i.test(url);
 const MAX_VIDEO_MB = 100;
 
+// Generate Cloudinary thumbnail URL from a video URL
+// e.g. .../video/upload/wandersplit/xxx.mp4 → .../video/upload/so_0/wandersplit/xxx.jpg
+function getVideoThumbnail(videoUrl) {
+  if (!videoUrl) return null;
+  return videoUrl
+    .replace("/upload/", "/upload/so_0,w_400,h_400,c_fill/")
+    .replace(/\.(mp4|mov|webm|avi)(\?.*)?$/i, ".jpg");
+}
+
 export default function GalleryPage({ toast }) {
   const { activeTrip } = useTrip();
   const { tr, t } = useLang();
@@ -121,7 +130,7 @@ export default function GalleryPage({ toast }) {
           <p className="page-subtitle">{countLabel}</p>
         </div>
         <label className="btn btn-primary" style={{ cursor: "pointer" }}>
-          📎 {tr.uploadPhoto}
+          {tr.uploadPhoto}
           <input type="file" accept="image/*,video/*" onChange={handleFileSelect} style={{ display: "none" }} />
         </label>
       </div>
@@ -144,8 +153,12 @@ export default function GalleryPage({ toast }) {
               <div key={photo.id} className="photo-item" onClick={() => setLightbox(photo)}>
                 {itemIsVideo ? (
                   <div className="video-thumb">
-                    <video src={photo.imageUrl} className="photo-thumb" preload="metadata"
-                      style={{ objectFit: "cover" }} />
+                    <img
+                      src={getVideoThumbnail(photo.imageUrl) || photo.imageUrl}
+                      alt={photo.note || "video"}
+                      className="photo-thumb"
+                      onError={e => { e.target.style.display="none"; }}
+                    />
                     <div className="video-play-badge">▶</div>
                   </div>
                 ) : (
