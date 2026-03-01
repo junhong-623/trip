@@ -130,47 +130,119 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
     if (!rawText) return res.json({ restaurantName: null, date: null, totalAmount: null, items: [], rawText: "" });
 
     const lines = rawText.split("\n").map(l => l.trim()).filter(Boolean);
-    const restaurantName = lines[0] || null;
 
-    const dateRegex = /(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})|(\d{4}[\/-]\d{2}[\/-]\d{2})/;
-    const dateLine = lines.find(l => dateRegex.test(l));
+    // ── Detect receipt language ───────────────────────────────────────────────
+    const hasJapanese = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(rawText);
+    const hasYen = /[¥￥]/.test(rawText);
+    const isJpReceipt = hasJapanese || hasYen;
+
+    // ── Restaurant name ───────────────────────────────────────────────────────
+    const skipNameLine = /^(\d{2,}|tel|fax|http|www|〒|\+|[0-9\-（）()]{7,})/i;
+    const restaurantName = lines.find(l => l.length >= 2 && !skipNameLine.test(l)) || lines[0] || null;
+
+    // ── Date ──────────────────────────────────────────────────────────────────
     let date = null;
-    if (dateLine) {
-      const match = dateLine.match(dateRegex);
-      if (match) {
-        const raw = match[0];
-        const parts = raw.split(/[\/-]/);
-        if (parts.length === 3) {
-          if (parts[0].length === 4) date = raw.replace(/\//g, "-");
-          else if (parts[2].length === 4) date = `${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
-          else date = `${new Date().getFullYear()}-${parts[0].padStart(2,"0")}-${parts[1].padStart(2,"0")}`;
+    for (const line of lines) {
+      if (date) break;
+      // Japanese: 2019年7月18日 or 2019年7月18日(木)
+      const jpDate = line.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})/);
+      if (jpDate) {
+        date = `${jpDate[1]}-${jpDate[2].padStart(2,"0")}-${jpDate[3].padStart(2,"0")}`;
+        break;
+      }
+      // Western: 2019-07-18 or 18/07/2019
+      const enDate = line.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})|(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      if (enDate) {
+        if (enDate[1]) {
+          date = `${enDate[1]}-${enDate[2].padStart(2,"0")}-${enDate[3].padStart(2,"0")}`;
+        } else {
+          date = `${enDate[6]}-${enDate[5].padStart(2,"0")}-${enDate[4].padStart(2,"0")}`;
+        }
+        break;
+      }
+    }
+
+    // ── Total amount ──────────────────────────────────────────────────────────
+    let totalAmount = null;
+
+    if (isJpReceipt) {
+      // Priority 1: actual payment line (お約/現計) — the real charged amount
+      const paymentPatterns = [
+        /お\s*[約計]\s*[¥￥]\s*([\d,]+)/,
+        /現\s*計[^\d¥]*[¥￥]\s*([\d,]+)/,
+        /お支払[^\d¥]*[¥￥]\s*([\d,]+)/,
+      ];
+      for (const pat of paymentPatterns) {
+        const m = rawText.match(pat);
+        if (m) { totalAmount = parseFloat(m[1].replace(/,/g,"")); break; }
+      }
+      // Priority 2: 合計
+      if (!totalAmount) {
+        for (const line of lines) {
+          if (!/合\s*計/.test(line)) continue;
+          const m = line.match(/[¥￥]\s*([\d,]+)/);
+          if (m) { totalAmount = parseFloat(m[1].replace(/,/g,"")); break; }
+        }
+      }
+    } else {
+      // English receipt
+      for (const line of lines) {
+        const m = line.match(/(?:grand\s+total|amount\s+due|total)[^\d]*([\d,]+(?:\.\d{2})?)/i);
+        if (m) { totalAmount = parseFloat(m[1].replace(/,/g,"")); break; }
+      }
+    }
+    // Fallback: largest ¥ amount or decimal amount
+    if (!totalAmount) {
+      const allNums = hasYen
+        ? [...rawText.matchAll(/[¥￥]\s*([\d,]+)/g)].map(m => parseFloat(m[1].replace(/,/g,"")))
+        : [...rawText.matchAll(/\$?\s*(\d+\.\d{2})/g)].map(m => parseFloat(m[1]));
+      if (allNums.length) totalAmount = Math.max(...allNums.filter(n => n > 0));
+    }
+
+    // ── Items ─────────────────────────────────────────────────────────────────
+    const items = [];
+
+    if (isJpReceipt) {
+      // Only pick lines starting with ＊ or * — those are actual ordered items
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!/^[＊*]/.test(line)) continue;
+
+        const m = line.match(/^[＊*]\s*(.+?)\s+[¥￥]\s*([\d,]+)/);
+        if (m) {
+          // Item + price on same line: ＊コーラ ¥300外
+          const name = m[1].replace(/@[\d,]+[xｘ]?\s*\d+\s*$/, "").trim();
+          const price = parseFloat(m[2].replace(/,/g, ""));
+          if (name.length >= 1 && price > 0) items.push({ name, price });
+        } else {
+          // Item name on this line, price on next line: ＊プレミアムモツ \n @580x 2 ¥1,360外
+          const nextLine = lines[i + 1] || "";
+          const nm = nextLine.match(/@[\d,]+[xｘ]?\s*\d+\s+[¥￥]\s*([\d,]+)/);
+          if (nm) {
+            const name = line.replace(/^[＊*]\s*/, "").trim();
+            const price = parseFloat(nm[1].replace(/,/g, ""));
+            if (name.length >= 1 && price > 0) items.push({ name, price });
+            i++; // skip next line since we consumed it
+          }
+        }
+      }
+    } else {
+      // English receipt: "Item name   $12.34"
+      const skipItemLine = /total|tax|tip|service|discount|change|cash|card|subtotal/i;
+      for (const line of lines) {
+        if (skipItemLine.test(line)) continue;
+        const m = line.match(/^(.+?)\s+\$?([\d,]+\.\d{2})$/);
+        if (m) {
+          const name = m[1].trim();
+          const price = parseFloat(m[2].replace(/,/g, ""));
+          if (name.length > 1 && price > 0) items.push({ name, price });
         }
       }
     }
 
-    const totalRegex = /(total|amount due|grand total|subtotal)[^\d]*(\d+[\.,]\d{2})/i;
-    let totalAmount = null;
-    for (const line of lines) {
-      const match = line.match(totalRegex);
-      if (match) { totalAmount = parseFloat(match[2].replace(",", ".")); break; }
-    }
-    if (!totalAmount) {
-      const allAmounts = [...rawText.matchAll(/\$?\s*(\d+\.\d{2})/g)].map(m => parseFloat(m[1]));
-      if (allAmounts.length) totalAmount = Math.max(...allAmounts);
-    }
-
-    const itemRegex = /^(.+?)\s+\$?(\d+\.\d{2})$/;
-    const skipKeywords = /total|tax|tip|service|discount|change|cash|card|subtotal/i;
-    const items = [];
-    for (const line of lines) {
-      if (skipKeywords.test(line)) continue;
-      const match = line.match(itemRegex);
-      if (match) {
-        const name = match[1].trim();
-        const price = parseFloat(match[2]);
-        if (name.length > 1 && price > 0) items.push({ name, price });
-      }
-    }
+    // Debug: log first 20 lines to see actual OCR characters
+    console.log("OCR lines sample:", lines.slice(0, 20).map(l => JSON.stringify(l)).join("\n"));
+    console.log("Items found:", items.length);
 
     res.json({ restaurantName, date, totalAmount, items, rawText });
   } catch (err) {
