@@ -130,28 +130,24 @@ export default function SummaryPage({ toast }) {
   const totalSpend = receipts.reduce((s, r) => s + parseAmount(r.totalAmount), 0);
 
   // Per-person totals
-  const personPaid = {};
-  const personOwes = {};
-  people.forEach(p => { personPaid[p.id] = 0; personOwes[p.id] = 0; });
+  const personAdvanced = {};  // 垫付 = receipts they paid as payer
+  const personOwes = {};      // 应付 = total they owe others (fixed, never changes)
+  const personSettled = {};   // 结清已付 = settlements they've made as debtor
+  people.forEach(p => { personAdvanced[p.id] = 0; personOwes[p.id] = 0; personSettled[p.id] = 0; });
 
-  // Base: paid = receipts they paid for, owes = what they owe others
   receipts.forEach(r => {
-    if (r.payerId && personPaid[r.payerId] !== undefined) {
-      personPaid[r.payerId] = roundMoney(personPaid[r.payerId] + parseAmount(r.totalAmount));
-    }
-    const debts = computeReceiptDebts(r, people);
-    debts.forEach(d => {
+    if (r.payerId && personAdvanced[r.payerId] !== undefined)
+      personAdvanced[r.payerId] = roundMoney(personAdvanced[r.payerId] + parseAmount(r.totalAmount));
+    computeReceiptDebts(r, people).forEach(d => {
       if (personOwes[d.debtorId] !== undefined)
         personOwes[d.debtorId] = roundMoney(personOwes[d.debtorId] + d.amount);
     });
   });
 
-  // Settlements: debtor paid creditor → debtor's paid increases, creditor's owes decreases
+  // Settlements: track how much debtor has paid back
   settlements.filter(s => s.cleared).forEach(s => {
-    if (personPaid[s.debtorId] !== undefined)
-      personPaid[s.debtorId] = roundMoney(personPaid[s.debtorId] + s.amount);
-    if (personOwes[s.debtorId] !== undefined)
-      personOwes[s.debtorId] = roundMoney(personOwes[s.debtorId] - s.amount);
+    if (personSettled[s.debtorId] !== undefined)
+      personSettled[s.debtorId] = roundMoney(personSettled[s.debtorId] + s.amount);
   });
 
   // Count pending debts across all receipts
@@ -177,9 +173,11 @@ export default function SummaryPage({ toast }) {
       <div className="section-title" style={{ marginBottom: 10 }}>{tr.individualBalances}</div>
       <div className="balance-list" style={{ marginBottom: 20 }}>
         {people.map(person => {
-          const paid = personPaid[person.id] || 0;
-          const owes = personOwes[person.id] || 0;
-          const net = roundMoney(paid - owes);
+          const advanced = personAdvanced[person.id] || 0;  // 垫付
+          const owes = personOwes[person.id] || 0;           // 应付
+          const settled = personSettled[person.id] || 0;     // 结清已付
+          // 进度条 = 结清已付 / 应付
+          const progress = owes > 0 ? Math.min(1, settled / owes) : (advanced > 0 ? 1 : 0);
           return (
             <div key={person.id} className="balance-card card">
               <div className="balance-card-top">
@@ -187,17 +185,26 @@ export default function SummaryPage({ toast }) {
                 <div className="balance-card-info">
                   <div className="balance-name">{person.name}</div>
                   <div className="balance-details">
-                    {tr.paid} {formatAmount(paid, currency)} · {tr.owes} {formatAmount(owes, currency)}
+                    {tr.paid} {formatAmount(settled, currency)}
+                    <span className="balance-sep">·</span>
+                    {tr.owes} {formatAmount(owes, currency)}
+                    {advanced > 0 && (
+                      <span className="balance-advanced">
+                        <span className="balance-sep">·</span>
+                        垫付 {formatAmount(advanced, currency)}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className={`balance-net amount ${net >= 0 ? "amount-positive" : "amount-negative"}`}>
-                  {net >= 0 ? "+" : ""}{formatAmount(net, currency)}
+                <div className={`balance-net amount ${settled >= owes && owes > 0 ? "amount-positive" : owes > settled ? "amount-negative" : ""}`}>
+                  {owes > 0
+                    ? (settled >= owes ? "✓" : `-${formatAmount(roundMoney(owes - settled), currency)}`)
+                    : (advanced > 0 ? `+${formatAmount(advanced, currency)}` : "—")
+                  }
                 </div>
               </div>
               <div className="balance-bar-wrap">
-                <div className="balance-bar" style={{
-                  width: totalSpend > 0 ? `${Math.min(100, (paid / totalSpend) * 100)}%` : "0%"
-                }} />
+                <div className="balance-bar" style={{ width: `${Math.round(progress * 100)}%` }} />
               </div>
             </div>
           );
