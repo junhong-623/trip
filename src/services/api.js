@@ -1,5 +1,18 @@
 // api.js — All backend API calls
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+
+// Ensure BASE_URL is always a clean absolute URL with no trailing slash
+function getBaseUrl() {
+  const raw = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+  // Strip any accidental path prefix that Vite's base might inject
+  try {
+    const url = new URL(raw);
+    return url.origin; // e.g. "https://trip-production-61af.up.railway.app"
+  } catch {
+    return "http://localhost:3001";
+  }
+}
+
+const BASE_URL = getBaseUrl();
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -13,42 +26,26 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-// ─── Google Drive ─────────────────────────────────────────────────────────────
+// ─── Cloudinary / Storage ─────────────────────────────────────────────────────
 
-/**
- * Upload image/file to a Google Drive folder.
- * POST /api/drive/upload
- * Body: FormData { file, folderId, fileName }
- * Returns: { fileId, imageUrl }
- */
 export async function uploadToDrive(file, folderId, fileName) {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("folderId", folderId);
+  formData.append("folderId", folderId || "");
   if (fileName) formData.append("fileName", fileName);
 
   const res = await fetch(`${BASE_URL}/api/drive/upload`, {
     method: "POST",
     body: formData,
   });
-  if (!res.ok) throw new Error("Drive upload failed");
+  if (!res.ok) throw new Error("Upload failed");
   return res.json(); // { fileId, imageUrl }
 }
 
-/**
- * Delete file from Google Drive.
- * DELETE /api/drive/file/:fileId
- */
 export async function deleteFromDrive(fileId) {
-  return request(`/api/drive/file/${fileId}`, { method: "DELETE" });
+  return request(`/api/drive/file/${encodeURIComponent(fileId)}`, { method: "DELETE" });
 }
 
-/**
- * Create a new Drive folder inside a parent.
- * POST /api/drive/folder
- * Body: { name, parentFolderId }
- * Returns: { folderId }
- */
 export async function createDriveFolder(name, parentFolderId) {
   return request("/api/drive/folder", {
     method: "POST",
@@ -58,16 +55,6 @@ export async function createDriveFolder(name, parentFolderId) {
 
 // ─── Google Vision OCR ────────────────────────────────────────────────────────
 
-/**
- * Analyze receipt image with Google Vision API.
- * POST /api/ocr/receipt
- * Body: FormData { file }
- * Returns: {
- *   restaurantName, date, totalAmount,
- *   items: [{ name, price }],
- *   rawText
- * }
- */
 export async function analyzeReceipt(file) {
   const formData = new FormData();
   formData.append("file", file);
