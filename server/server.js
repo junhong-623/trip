@@ -14,7 +14,19 @@ const stream = require("stream");
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow any localhost (any port), GitHub Pages, or no origin (mobile/Postman)
+    if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin) || origin.includes("github.io")) {
+      callback(null, true);
+    } else if (process.env.CLIENT_ORIGIN && process.env.CLIENT_ORIGIN.split(",").includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS blocked: " + origin));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // ─── Auth ──────────────────────────────────────────────────────────────────────

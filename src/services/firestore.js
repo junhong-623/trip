@@ -62,3 +62,7 @@ export const addSettlement = (tripId, data) =>
 
 export const updateSettlement = (tripId, settlementId, data) =>
   updateDoc(subDoc(tripId, "settlements", settlementId), data);
+
+// NEW: delete a settlement (un-settle)
+export const deleteSettlement = (tripId, settlementId) =>
+  deleteDoc(subDoc(tripId, "settlements", settlementId));

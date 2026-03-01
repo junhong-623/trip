@@ -295,3 +295,9 @@
 .eaters-placeholder { font-size: 13px; color: var(--ink-muted); }
 .eaters-avatars { display: flex; align-items: center; }
 .item-remove-btn { flex-shrink: 0; }
+
+/* Compact date input */
+.date-input-compact {
+  max-width: 160px;
+  font-size: 14px;
+}

@@ -11,10 +11,9 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
   const [ocrLoading, setOcrLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingEatersItem, setEditingEatersItem] = useState(null);
-  const [showItemEditor, setShowItemEditor] = useState(false); // slide panel
+  const [showItemEditor, setShowItemEditor] = useState(false);
 
   const [items, setItems] = useState([]);
-
   const [form, setForm] = useState({
     restaurantName: "",
     date: new Date().toISOString().slice(0, 10),
@@ -50,26 +49,13 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
   const itemsTotal = items.reduce((s, i) => s + parseAmount(i.price), 0);
   const itemsOverBudget = totalAmount > 0 && itemsTotal > totalAmount + 0.01;
 
-  // ── Items CRUD ─────────────────────────────────────────────────────────────
   const addItem = useCallback(() => {
     setItems(prev => [...prev, { id: generateId(), name: "", price: "", eaters: [] }]);
   }, []);
-
-  const removeItem = useCallback((id) => {
-    setItems(prev => prev.filter(i => i.id !== id));
-  }, []);
-
-  const updateItemName = useCallback((id, value) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, name: value } : i));
-  }, []);
-
-  const updateItemPrice = useCallback((id, value) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, price: value } : i));
-  }, []);
-
-  const updateItemEaters = useCallback((id, eaters) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, eaters } : i));
-  }, []);
+  const removeItem = useCallback((id) => { setItems(prev => prev.filter(i => i.id !== id)); }, []);
+  const updateItemName = useCallback((id, v) => { setItems(prev => prev.map(i => i.id === id ? { ...i, name: v } : i)); }, []);
+  const updateItemPrice = useCallback((id, v) => { setItems(prev => prev.map(i => i.id === id ? { ...i, price: v } : i)); }, []);
+  const updateItemEaters = useCallback((id, eaters) => { setItems(prev => prev.map(i => i.id === id ? { ...i, eaters } : i)); }, []);
 
   const toggleParticipant = (pid) => {
     set("participants", form.participants.includes(pid)
@@ -77,7 +63,6 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
       : [...form.participants, pid]);
   };
 
-  // ── OCR ────────────────────────────────────────────────────────────────────
   const handleOCRUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -99,13 +84,12 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
     }
   };
 
-  // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!form.restaurantName || !form.totalAmount || !form.payerId) {
       toast.show(tr.fillRequired); return;
     }
     if (itemsOverBudget) {
-      toast.show("Items total exceeds the receipt total amount.", "error"); return;
+      toast.show(tr.itemsOverBudget || "Items total exceeds receipt amount", "error"); return;
     }
     setSaving(true);
     try {
@@ -133,7 +117,6 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      {/* Outer wrapper clips the slide animation */}
       <div className="receipt-modal-wrap" onClick={e => e.stopPropagation()}>
 
         {/* ── Main form panel ── */}
@@ -169,29 +152,30 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
           )}
 
           <div className="receipt-form">
-            {/* Basic */}
             <div className="form-section">
               <div className="form-group">
                 <label className="form-label">{tr.restaurantPlace}</label>
                 <input className="form-input" value={form.restaurantName}
                   onChange={e => set("restaurantName", e.target.value)} placeholder="Ichiran Ramen" />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">{tr.date}</label>
-                  <input className="form-input" type="date" value={form.date}
-                    onChange={e => set("date", e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t(tr.total, currency)}</label>
-                  <input className="form-input" type="number" step="0.01"
-                    value={form.totalAmount} onChange={e => set("totalAmount", e.target.value)}
-                    placeholder="0.00" />
-                </div>
+
+              {/* FIX: date on its own row (smaller), amount full width below */}
+              <div className="form-group">
+                <label className="form-label">{tr.date}</label>
+                <input className="form-input date-input-compact" type="date" value={form.date}
+                  onChange={e => set("date", e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{t(tr.total, currency)}</label>
+                {/* inputmode="decimal" triggers numeric keypad on mobile */}
+                <input className="form-input" type="number" step="0.01"
+                  inputMode="decimal"
+                  value={form.totalAmount}
+                  onChange={e => set("totalAmount", e.target.value)}
+                  placeholder="0.00" />
               </div>
             </div>
 
-            {/* Payer */}
             <div className="form-section">
               <div className="section-title">{tr.whoPaid}</div>
               <div className="payer-row">
@@ -206,7 +190,6 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               </div>
             </div>
 
-            {/* Items — display only + edit button */}
             <div className="form-section">
               <div className="items-section-header">
                 <div className="section-title" style={{ marginBottom: 0 }}>{tr.items}</div>
@@ -240,16 +223,14 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                       </div>
                     </div>
                   ))}
-
-                  {/* Items total + budget indicator */}
                   <div className={`items-total-row ${itemsOverBudget ? "over-budget" : ""}`}>
-                    <span>Items total</span>
+                    <span>{tr.itemsTotal}</span>
                     <span className="amount">{formatAmount(itemsTotal, currency)}</span>
                     {totalAmount > 0 && (
                       <span className="items-budget-hint">
                         {itemsOverBudget
-                          ? `⚠ Exceeds total by ${formatAmount(itemsTotal - totalAmount, currency)}`
-                          : `✓ ${formatAmount(totalAmount - itemsTotal, currency)} remaining`}
+                          ? `⚠ ${tr.exceeds || "Exceeds"} ${formatAmount(itemsTotal - totalAmount, currency)}`
+                          : `✓ ${formatAmount(totalAmount - itemsTotal, currency)} ${tr.remaining || "remaining"}`}
                       </span>
                     )}
                   </div>
@@ -257,7 +238,6 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               )}
             </div>
 
-            {/* Split (no items) */}
             {items.length === 0 && (
               <div className="form-section">
                 <div className="section-title">{tr.splitAmong}</div>
@@ -278,7 +258,6 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               </div>
             )}
 
-            {/* Location */}
             <div className="form-section">
               <div className="section-title">{tr.location}</div>
               <div className="form-group">
@@ -287,9 +266,9 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                   placeholder={tr.googleMapsLink} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <input className="form-input" type="number" step="any"
+                <input className="form-input" type="number" step="any" inputMode="decimal"
                   value={form.lat} onChange={e => set("lat", e.target.value)} placeholder={tr.latitude} />
-                <input className="form-input" type="number" step="any"
+                <input className="form-input" type="number" step="any" inputMode="decimal"
                   value={form.lng} onChange={e => set("lng", e.target.value)} placeholder={tr.longitude} />
               </div>
             </div>
@@ -314,19 +293,16 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             </button>
           </div>
 
-          {/* Budget bar */}
           {totalAmount > 0 && (
             <div className="budget-bar-wrap">
               <div className="budget-bar-track">
-                <div
-                  className={`budget-bar-fill ${itemsOverBudget ? "over" : ""}`}
-                  style={{ width: `${Math.min(100, (itemsTotal / totalAmount) * 100)}%` }}
-                />
+                <div className={`budget-bar-fill ${itemsOverBudget ? "over" : ""}`}
+                  style={{ width: `${Math.min(100, (itemsTotal / totalAmount) * 100)}%` }} />
               </div>
               <div className={`budget-bar-label ${itemsOverBudget ? "over" : ""}`}>
                 {itemsOverBudget
-                  ? `⚠ ${formatAmount(itemsTotal, currency)} / ${formatAmount(totalAmount, currency)} — over by ${formatAmount(itemsTotal - totalAmount, currency)}`
-                  : `${formatAmount(itemsTotal, currency)} / ${formatAmount(totalAmount, currency)} — ${formatAmount(totalAmount - itemsTotal, currency)} left`
+                  ? `⚠ ${formatAmount(itemsTotal, currency)} / ${formatAmount(totalAmount, currency)}`
+                  : `${formatAmount(itemsTotal, currency)} / ${formatAmount(totalAmount, currency)} — ${formatAmount(totalAmount - itemsTotal, currency)} ${tr.remaining || "left"}`
                 }
               </div>
             </div>
@@ -341,76 +317,51 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               </div>
             ) : (
               items.map(item => (
-                <ItemEditorRow
-                  key={item.id}
-                  item={item}
-                  people={people}
-                  currency={currency}
-                  totalAmount={totalAmount}
-                  itemsTotal={itemsTotal}
-                  onNameChange={updateItemName}
-                  onPriceChange={updateItemPrice}
-                  onRemove={removeItem}
-                  onEditEaters={setEditingEatersItem}
-                />
+                <ItemEditorRow key={item.id} item={item} people={people} currency={currency}
+                  totalAmount={totalAmount} itemsTotal={itemsTotal}
+                  onNameChange={updateItemName} onPriceChange={updateItemPrice}
+                  onRemove={removeItem} onEditEaters={setEditingEatersItem} />
               ))
             )}
           </div>
 
           <div style={{ padding: "12px 0 4px" }}>
             <button className="btn btn-primary" style={{ width: "100%" }}
-              onClick={() => setShowItemEditor(false)}>
-              Done ✓
-            </button>
+              onClick={() => setShowItemEditor(false)}>Done ✓</button>
           </div>
         </div>
       </div>
 
       {editingEatersItem && (
-        <ItemEatersModal
-          item={editingEatersItem}
-          people={people}
+        <ItemEatersModal item={editingEatersItem} people={people}
           onSave={(eaters) => { updateItemEaters(editingEatersItem.id, eaters); setEditingEatersItem(null); }}
-          onClose={() => setEditingEatersItem(null)}
-        />
+          onClose={() => setEditingEatersItem(null)} />
       )}
     </div>
   );
 }
 
-// ── ItemEditorRow — separate component keeps inputs focused ───────────────────
 function ItemEditorRow({ item, people, currency, totalAmount, itemsTotal, onNameChange, onPriceChange, onRemove, onEditEaters }) {
   const itemPrice = parseAmount(item.price);
-  // Would this item push us over budget if others stay same?
   const otherTotal = roundMoney(itemsTotal - itemPrice);
+  const isOver = totalAmount > 0 && roundMoney(otherTotal + itemPrice) > totalAmount + 0.01;
 
   return (
     <div className="item-editor-row">
       <div className="item-editor-fields">
-        <input
-          className="form-input"
-          value={item.name}
+        <input className="form-input" value={item.name}
           onChange={e => onNameChange(item.id, e.target.value)}
-          placeholder="Item name"
-          style={{ flex: 1 }}
-        />
+          placeholder="Item name" style={{ flex: 1 }} />
         <div className="item-price-wrap">
-          <input
-            className={`form-input item-price-field ${totalAmount > 0 && roundMoney(otherTotal + itemPrice) > totalAmount + 0.01 ? "price-over" : ""}`}
-            type="number"
-            step="0.01"
+          <input className={`form-input item-price-field ${isOver ? "price-over" : ""}`}
+            type="number" step="0.01" inputMode="decimal"
             value={item.price}
             onChange={e => onPriceChange(item.id, e.target.value)}
-            placeholder="0.00"
-          />
-          {totalAmount > 0 && roundMoney(otherTotal + itemPrice) > totalAmount + 0.01 && (
-            <span className="price-over-hint">Over</span>
-          )}
+            placeholder="0.00" />
+          {isOver && <span className="price-over-hint">Over</span>}
         </div>
       </div>
-
       <div className="item-editor-bottom">
-        {/* Eaters selector */}
         <button type="button" className="item-eaters-selector" onClick={() => onEditEaters(item)}>
           {item.eaters.length === 0 ? (
             <span className="eaters-placeholder">👥 Tap to assign people</span>
@@ -418,29 +369,20 @@ function ItemEditorRow({ item, people, currency, totalAmount, itemsTotal, onName
             <div className="eaters-avatars">
               {item.eaters.slice(0, 5).map(eid => {
                 const p = people.find(x => x.id === eid);
-                return p ? (
-                  <img key={eid}
-                    src={p.avatarUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(p.name)}`}
-                    alt={p.name}
-                    title={p.name}
-                    style={{ width: 26, height: 26, borderRadius: "50%", marginLeft: -6, border: "2px solid white" }}
-                  />
-                ) : null;
+                return p ? <img key={eid}
+                  src={p.avatarUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(p.name)}`}
+                  alt={p.name} title={p.name}
+                  style={{ width: 26, height: 26, borderRadius: "50%", marginLeft: -6, border: "2px solid white" }} /> : null;
               })}
-              {item.eaters.length > 5 && (
-                <span style={{ fontSize: 11, color: "var(--ink-muted)", marginLeft: 4 }}>+{item.eaters.length - 5}</span>
-              )}
+              {item.eaters.length > 5 && <span style={{ fontSize: 11, color: "var(--ink-muted)", marginLeft: 4 }}>+{item.eaters.length - 5}</span>}
               <span style={{ fontSize: 12, color: "var(--ink-muted)", marginLeft: 6 }}>
                 {item.eaters.length === 1 ? "1 person" : `${item.eaters.length} people`}
-                {itemPrice > 0 && item.eaters.length > 0 &&
-                  ` · ${formatAmount(roundMoney(itemPrice / item.eaters.length), currency)} each`}
+                {itemPrice > 0 && item.eaters.length > 0 && ` · ${formatAmount(roundMoney(itemPrice / item.eaters.length), currency)} each`}
               </span>
             </div>
           )}
         </button>
-        <button type="button" className="btn btn-danger btn-sm item-remove-btn" onClick={() => onRemove(item.id)}>
-          🗑
-        </button>
+        <button type="button" className="btn btn-danger btn-sm item-remove-btn" onClick={() => onRemove(item.id)}>🗑</button>
       </div>
     </div>
   );

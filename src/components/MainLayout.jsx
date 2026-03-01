@@ -46,39 +46,40 @@ export default function MainLayout() {
   };
 
   const initials = user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
-  const displayName = user?.displayName || user?.email || "";
 
   return (
     <div className="app-layout">
-      {/* Top Header */}
       <header className="app-header">
         <div className="app-header-inner">
-          <div className="app-brand">
+
+          {/* Logo — click to go to trips */}
+          <button
+            className="app-brand"
+            onClick={() => setTab("trips")}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
             <span className="app-brand-icon">✈</span>
             <span className="app-brand-name">Wandersplit</span>
-          </div>
+          </button>
 
+          {/* Active trip pill — click to go to trips */}
           {activeTrip && (
-            <div className="app-trip-pill">
+            <button
+              className="app-trip-pill"
+              onClick={() => setTab("trips")}
+              style={{ cursor: "pointer", border: "none" }}
+            >
               <span className="app-trip-name">{activeTrip.name}</span>
               <span className="app-trip-currency">{activeTrip.baseCurrency}</span>
-            </div>
+            </button>
           )}
 
           <div className="app-header-actions">
-            <button
-              className="btn btn-icon"
-              title={tr.settings}
-              onClick={() => setTab("settings")}
-            >⚙</button>
+            <button className="btn btn-icon" title={tr.settings}
+              onClick={() => setTab("settings")}>⚙</button>
 
-            {/* Avatar button */}
             <div className="user-menu-wrap">
-              <button
-                className="user-avatar-btn"
-                onClick={() => setShowUserMenu(v => !v)}
-                title={displayName}
-              >
+              <button className="user-avatar-btn" onClick={() => setShowUserMenu(v => !v)}>
                 <span className="user-initials">{initials}</span>
               </button>
 
@@ -93,25 +94,18 @@ export default function MainLayout() {
                         <div className="user-menu-email">{user?.email}</div>
                       </div>
                     </div>
-
                     <div className="user-menu-divider" />
-
-                    {/* Language selector inside menu */}
                     <div className="user-menu-section-label">{tr.language}</div>
                     <div className="user-menu-langs">
                       {LANGUAGES.map(l => (
-                        <button
-                          key={l.code}
+                        <button key={l.code}
                           className={`user-menu-lang-btn ${lang === l.code ? "active" : ""}`}
-                          onClick={() => changeLang(l.code)}
-                        >
+                          onClick={() => changeLang(l.code)}>
                           {l.flag} {l.label}
                         </button>
                       ))}
                     </div>
-
                     <div className="user-menu-divider" />
-
                     <button className="user-menu-logout" onClick={handleLogout}>
                       🚪 {tr.signOut}
                     </button>
@@ -123,19 +117,13 @@ export default function MainLayout() {
         </div>
       </header>
 
-      {/* Page Content */}
-      <main className="app-main">
-        {renderPage()}
-      </main>
+      <main className="app-main">{renderPage()}</main>
 
-      {/* Bottom Nav */}
       <nav className="app-nav">
         {NAV.map(n => (
-          <button
-            key={n.id}
+          <button key={n.id}
             className={`nav-item ${tab === n.id ? "active" : ""}`}
-            onClick={() => setTab(n.id)}
-          >
+            onClick={() => setTab(n.id)}>
             <span className="nav-icon">{n.icon}</span>
             <span className="nav-label">{n.label}</span>
           </button>
