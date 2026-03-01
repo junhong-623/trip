@@ -1,22 +1,20 @@
 // server.js — Express backend
-// Handles: Google Drive uploads, Google Vision OCR
+// Handles: Cloudinary uploads, Google Vision OCR
 // Run with: node server.js
-// Required env vars: GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_SERVICE_ACCOUNT_JSON
 
 const express = require("express");
 const multer = require("multer");
 const cors = require("cors");
 const { google } = require("googleapis");
 const { ImageAnnotatorClient } = require("@google-cloud/vision");
+const cloudinary = require("cloudinary").v2;
 const path = require("path");
-const stream = require("stream");
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow any localhost (any port), GitHub Pages, or no origin (mobile/Postman)
     if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin) || origin.includes("github.io")) {
       callback(null, true);
     } else if (process.env.CLIENT_ORIGIN && process.env.CLIENT_ORIGIN.split(",").includes(origin)) {
@@ -29,159 +27,89 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// ─── Auth ──────────────────────────────────────────────────────────────────────
+// ─── Cloudinary config ────────────────────────────────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "db2ixn8zh",
+  api_key:    process.env.CLOUDINARY_API_KEY    || "421469929622667",
+  api_secret: process.env.CLOUDINARY_API_SECRET || "ImgKNZvnbCD5RFOKk3StMtxgtZo",
+});
+
+// ─── Google Auth (Vision OCR only) ───────────────────────────────────────────
 function getAuth() {
   const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
   const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-
   let credentials;
   if (keyJson) {
     credentials = JSON.parse(keyJson);
   } else if (keyPath) {
     credentials = require(path.resolve(keyPath));
   } else {
-    throw new Error("No Google Service Account credentials found. Set GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_SERVICE_ACCOUNT_JSON");
+    throw new Error("No Google Service Account credentials found.");
   }
-
   return new google.auth.GoogleAuth({
     credentials,
-    scopes: [
-      "https://www.googleapis.com/auth/drive.file",
-      "https://www.googleapis.com/auth/cloud-vision",
-    ],
+    scopes: ["https://www.googleapis.com/auth/cloud-vision"],
   });
 }
 
-// ─── Google Drive ──────────────────────────────────────────────────────────────
-
-/**
- * POST /api/drive/upload
- * Upload a file to Google Drive and make it publicly readable.
- * Body: multipart/form-data { file, folderId, fileName? }
- * Returns: { fileId, imageUrl }
- */
+// ─── POST /api/drive/upload — Cloudinary ─────────────────────────────────────
 app.post("/api/drive/upload", upload.single("file"), async (req, res) => {
   try {
-    const { folderId, fileName } = req.body;
     if (!req.file) return res.status(400).json({ message: "No file provided" });
-    if (!folderId) return res.status(400).json({ message: "folderId is required" });
 
-    const auth = getAuth();
-    const drive = google.drive({ version: "v3", auth });
+    const { folderId, fileName } = req.body;
+    const folder = folderId ? `wandersplit/${folderId}` : "wandersplit";
+    const publicId = `${folder}/${Date.now()}`;
 
-    const fileMetadata = {
-      name: fileName || `${Date.now()}_${req.file.originalname}`,
-      parents: [folderId],
-    };
-
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(req.file.buffer);
-
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: {
-        mimeType: req.file.mimetype,
-        body: bufferStream,
-      },
-      fields: "id, name",
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { public_id: publicId, resource_type: "image", overwrite: false },
+        (error, result) => error ? reject(error) : resolve(result)
+      );
+      stream.end(req.file.buffer);
     });
 
-    const fileId = response.data.id;
-
-    // Make file publicly readable
-    await drive.permissions.create({
-      fileId,
-      requestBody: { role: "reader", type: "anyone" },
-    });
-
-    const imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-
-    res.json({ fileId, imageUrl });
+    res.json({ fileId: result.public_id, imageUrl: result.secure_url });
   } catch (err) {
-    console.error("Drive upload error:", err);
+    console.error("Cloudinary upload error:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
-/**
- * DELETE /api/drive/file/:fileId
- * Delete a file from Google Drive.
- */
-app.delete("/api/drive/file/:fileId", async (req, res) => {
+// ─── DELETE /api/drive/file/:fileId — Cloudinary ─────────────────────────────
+app.delete("/api/drive/file/:fileId(*)", async (req, res) => {
   try {
-    const { fileId } = req.params;
-    const auth = getAuth();
-    const drive = google.drive({ version: "v3", auth });
-    await drive.files.delete({ fileId });
+    const fileId = decodeURIComponent(req.params.fileId);
+    await cloudinary.uploader.destroy(fileId, { resource_type: "image" });
     res.json({ success: true });
   } catch (err) {
-    console.error("Drive delete error:", err);
+    console.error("Cloudinary delete error:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
-/**
- * POST /api/drive/folder
- * Create a folder in Google Drive.
- * Body: { name, parentFolderId }
- * Returns: { folderId }
- */
+// ─── POST /api/drive/folder — no-op for Cloudinary ───────────────────────────
 app.post("/api/drive/folder", async (req, res) => {
-  try {
-    const { name, parentFolderId } = req.body;
-    const auth = getAuth();
-    const drive = google.drive({ version: "v3", auth });
-
-    const fileMetadata = {
-      name,
-      mimeType: "application/vnd.google-apps.folder",
-      ...(parentFolderId ? { parents: [parentFolderId] } : {}),
-    };
-
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      fields: "id",
-    });
-
-    res.json({ folderId: response.data.id });
-  } catch (err) {
-    console.error("Drive folder create error:", err);
-    res.status(500).json({ message: err.message });
-  }
+  res.json({ folderId: req.body.name || "wandersplit" });
 });
 
-// ─── Google Vision OCR ─────────────────────────────────────────────────────────
-
-/**
- * POST /api/ocr/receipt
- * Analyze a receipt image using Google Vision API.
- * Body: multipart/form-data { file }
- * Returns: { restaurantName, date, totalAmount, items: [{ name, price }], rawText }
- */
+// ─── POST /api/ocr/receipt — Google Vision ───────────────────────────────────
 app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file provided" });
 
     const auth = getAuth();
     const client = new ImageAnnotatorClient({ authClient: await auth.getClient() });
-
     const [result] = await client.textDetection({
       image: { content: req.file.buffer.toString("base64") },
     });
 
     const rawText = result.fullTextAnnotation?.text || "";
+    if (!rawText) return res.json({ restaurantName: null, date: null, totalAmount: null, items: [], rawText: "" });
 
-    if (!rawText) {
-      return res.json({ restaurantName: null, date: null, totalAmount: null, items: [], rawText: "" });
-    }
-
-    // ── Parse the raw OCR text ────────────────────────────────────────────────
     const lines = rawText.split("\n").map(l => l.trim()).filter(Boolean);
-
-    // Restaurant name: often first non-empty line or line with address keywords skipped
     const restaurantName = lines[0] || null;
 
-    // Date: look for date patterns
     const dateRegex = /(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})|(\d{4}[\/-]\d{2}[\/-]\d{2})/;
     const dateLine = lines.find(l => dateRegex.test(l));
     let date = null;
@@ -189,38 +117,26 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
       const match = dateLine.match(dateRegex);
       if (match) {
         const raw = match[0];
-        // Try to normalize to YYYY-MM-DD
         const parts = raw.split(/[\/-]/);
         if (parts.length === 3) {
-          if (parts[0].length === 4) {
-            date = raw.replace(/\//g, "-");
-          } else if (parts[2].length === 4) {
-            date = `${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
-          } else {
-            const year = new Date().getFullYear();
-            date = `${year}-${parts[0].padStart(2,"0")}-${parts[1].padStart(2,"0")}`;
-          }
+          if (parts[0].length === 4) date = raw.replace(/\//g, "-");
+          else if (parts[2].length === 4) date = `${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
+          else date = `${new Date().getFullYear()}-${parts[0].padStart(2,"0")}-${parts[1].padStart(2,"0")}`;
         }
       }
     }
 
-    // Total amount: look for TOTAL / GRAND TOTAL / AMOUNT DUE patterns
     const totalRegex = /(total|amount due|grand total|subtotal)[^\d]*(\d+[\.,]\d{2})/i;
     let totalAmount = null;
     for (const line of lines) {
       const match = line.match(totalRegex);
-      if (match) {
-        totalAmount = parseFloat(match[2].replace(",", "."));
-        break;
-      }
+      if (match) { totalAmount = parseFloat(match[2].replace(",", ".")); break; }
     }
-    // Fallback: last dollar amount in text
     if (!totalAmount) {
       const allAmounts = [...rawText.matchAll(/\$?\s*(\d+\.\d{2})/g)].map(m => parseFloat(m[1]));
       if (allAmounts.length) totalAmount = Math.max(...allAmounts);
     }
 
-    // Items: look for lines with a price at the end
     const itemRegex = /^(.+?)\s+\$?(\d+\.\d{2})$/;
     const skipKeywords = /total|tax|tip|service|discount|change|cash|card|subtotal/i;
     const items = [];
@@ -230,9 +146,7 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
       if (match) {
         const name = match[1].trim();
         const price = parseFloat(match[2]);
-        if (name.length > 1 && price > 0) {
-          items.push({ name, price });
-        }
+        if (name.length > 1 && price > 0) items.push({ name, price });
       }
     }
 
@@ -243,8 +157,8 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
   }
 });
 
-// ─── Health ────────────────────────────────────────────────────────────────────
-app.get("/health", (req, res) => res.json({ status: "ok" }));
+// ─── Health ───────────────────────────────────────────────────────────────────
+app.get("/health", (req, res) => res.json({ status: "ok", storage: "cloudinary" }));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
