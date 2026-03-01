@@ -162,26 +162,37 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
       }
     }
 
+    // Helper: parse yen amount handling OCR artifacts like "¥28, 000外" or "¥1, 3609+"
+    function parseYen(str) {
+      const m = str.match(/[¥￥]\s*([\d,\s]+)/);
+      if (!m) return null;
+      const val = parseFloat(m[1].replace(/[\s,]/g, "").replace(/[^\d]/g, ""));
+      return isNaN(val) || val <= 0 ? null : val;
+    }
+
     // ── Total amount ──────────────────────────────────────────────────────────
     let totalAmount = null;
 
     if (isJpReceipt) {
-      // Priority 1: actual payment line (お約/現計) — the real charged amount
-      const paymentPatterns = [
-        /お\s*[約計]\s*[¥￥]\s*([\d,]+)/,
-        /現\s*計[^\d¥]*[¥￥]\s*([\d,]+)/,
-        /お支払[^\d¥]*[¥￥]\s*([\d,]+)/,
-      ];
-      for (const pat of paymentPatterns) {
-        const m = rawText.match(pat);
-        if (m) { totalAmount = parseFloat(m[1].replace(/,/g,"")); break; }
+      // Priority 1: actual payment line (お約/現計)
+      for (const line of lines) {
+        if (!/お\s*[約計]|現\s*計|お支払/.test(line)) continue;
+        const val = parseYen(line);
+        if (val) { totalAmount = val; break; }
+        // Price may be on next line
+        const nextLine = lines[lines.indexOf(line) + 1] || "";
+        const val2 = parseYen(nextLine);
+        if (val2) { totalAmount = val2; break; }
       }
       // Priority 2: 合計
       if (!totalAmount) {
         for (const line of lines) {
           if (!/合\s*計/.test(line)) continue;
-          const m = line.match(/[¥￥]\s*([\d,]+)/);
-          if (m) { totalAmount = parseFloat(m[1].replace(/,/g,"")); break; }
+          const val = parseYen(line);
+          if (val) { totalAmount = val; break; }
+          const nextLine = lines[lines.indexOf(line) + 1] || "";
+          const val2 = parseYen(nextLine);
+          if (val2) { totalAmount = val2; break; }
         }
       }
     } else {
@@ -191,38 +202,85 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
         if (m) { totalAmount = parseFloat(m[1].replace(/,/g,"")); break; }
       }
     }
-    // Fallback: largest ¥ amount or decimal amount
+    // Fallback: largest ¥ amount
     if (!totalAmount) {
       const allNums = hasYen
-        ? [...rawText.matchAll(/[¥￥]\s*([\d,]+)/g)].map(m => parseFloat(m[1].replace(/,/g,"")))
+        ? lines.map(l => parseYen(l)).filter(n => n && n > 0)
         : [...rawText.matchAll(/\$?\s*(\d+\.\d{2})/g)].map(m => parseFloat(m[1]));
-      if (allNums.length) totalAmount = Math.max(...allNums.filter(n => n > 0));
+      if (allNums.length) totalAmount = Math.max(...allNums);
     }
 
     // ── Items ─────────────────────────────────────────────────────────────────
     const items = [];
 
     if (isJpReceipt) {
-      // Only pick lines starting with ＊ or * — those are actual ordered items
+      // Helper: extract yen amount handling OCR artifacts
+      // "¥28, 00094"→28000  "¥7809+"→780  "¥1,3609"→1360  "¥38,397"→38397
+      function extractYen(str) {
+        const m = str.match(/[¥￥]\s*([\d,\s]+)/);
+        if (!m) return null;
+        const groups = m[1].trim().split(/[\s,]+/).filter(g => /^\d+$/.test(g));
+        if (groups.length === 0) return null;
+
+        if (groups.length === 1) {
+          // Single number: strip trailing OCR junk digit (only if it follows a 0)
+          let n = groups[0];
+          for (let i = 0; i < 2; i++) {
+            if (n.length <= 1) break;
+            if (n.slice(-1) !== "0") {
+              const c = n.slice(0, -1);
+              if (c.slice(-1) === "0") { n = c; } else break;
+            } else break;
+          }
+          return parseInt(n) || null;
+        }
+
+        // Comma-separated thousands groups
+        let last = groups[groups.length - 1];
+        if (last.startsWith("0")) {
+          // e.g. "00094" → real thousands digits are the leading zeros → "000"
+          last = (last.match(/^(0*)/)[1] + "000").slice(0, 3);
+        } else if (last.length > 3) {
+          last = last.slice(0, 3); // truncate OCR junk beyond 3 digits
+        }
+        groups[groups.length - 1] = last;
+        return parseInt(groups.join("")) || null;
+      }
+
+      // Helper: find yen price in a line or the next few lines
+      function findPriceNearby(lineIdx) {
+        // Check current line and up to 2 following lines for a ¥ amount
+        for (let offset = 0; offset <= 2; offset++) {
+          const l = lines[lineIdx + offset] || "";
+          const val = extractYen(l);
+          if (val !== null) return { price: val, skipLines: offset };
+        }
+        return null;
+      }
+
+      const consumed = new Set(); // track line indices already used as price lines
+
       for (let i = 0; i < lines.length; i++) {
+        if (consumed.has(i)) continue;
         const line = lines[i];
+
+        // Only pick lines starting with * or ＊ — actual ordered items
         if (!/^[＊*]/.test(line)) continue;
 
-        const m = line.match(/^[＊*]\s*(.+?)\s+[¥￥]\s*([\d,]+)/);
-        if (m) {
-          // Item + price on same line: ＊コーラ ¥300外
-          const name = m[1].replace(/@[\d,]+[xｘ]?\s*\d+\s*$/, "").trim();
-          const price = parseFloat(m[2].replace(/,/g, ""));
-          if (name.length >= 1 && price > 0) items.push({ name, price });
+        const name = line.replace(/^[＊*]\s*/, "").trim();
+        if (name.length < 1) continue;
+
+        // Try to find price on same line first
+        let price = extractYen(line);
+        if (price) {
+          items.push({ name, price });
         } else {
-          // Item name on this line, price on next line: ＊プレミアムモツ \n @580x 2 ¥1,360外
-          const nextLine = lines[i + 1] || "";
-          const nm = nextLine.match(/@[\d,]+[xｘ]?\s*\d+\s+[¥￥]\s*([\d,]+)/);
-          if (nm) {
-            const name = line.replace(/^[＊*]\s*/, "").trim();
-            const price = parseFloat(nm[1].replace(/,/g, ""));
-            if (name.length >= 1 && price > 0) items.push({ name, price });
-            i++; // skip next line since we consumed it
+          // Price is on a following line (may have @qty line in between)
+          const result = findPriceNearby(i + 1);
+          if (result) {
+            items.push({ name, price: result.price });
+            // Mark the price line as consumed
+            consumed.add(i + 1 + result.skipLines);
           }
         }
       }
