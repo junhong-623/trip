@@ -99,13 +99,20 @@ export default function GalleryPage({ toast }) {
   };
 
   const handleDownload = async (photo) => {
-    try {
-      const url = photo.imageUrl;
-      const isVid = photo.isVideo || isVideoUrl(url);
-      const ext = isVid ? (url.match(/\.(mp4|mov|webm|avi)/i)?.[1] || "mp4") : (url.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1] || "jpg");
-      const filename = `wandersplit_${photo.id || Date.now()}.${ext}`;
+    const url = photo.imageUrl;
+    const isVid = photo.isVideo || isVideoUrl(url);
 
-      // Fetch as blob to trigger native download (works on mobile too)
+    if (!isVid) {
+      // For images: open in new tab so user can long-press save to camera roll
+      window.open(url, "_blank");
+      toast.show("长按图片 → 存储到相册", "info");
+      return;
+    }
+
+    // For videos: trigger blob download
+    try {
+      const ext = url.match(/\.(mp4|mov|webm|avi)/i)?.[1] || "mp4";
+      const filename = `wandersplit_${photo.id || Date.now()}.${ext}`;
       const res = await fetch(url);
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -234,7 +241,9 @@ export default function GalleryPage({ toast }) {
                   </a>
                 )}
                 <button className="btn btn-icon" style={{ background: "rgba(255,255,255,0.15)", color: "#fff", marginLeft: 8 }}
-                  onClick={() => handleDownload(lightbox)}>⬇</button>
+                  onClick={() => handleDownload(lightbox)}>
+                  {lightbox.isVideo || isVideoUrl(lightbox.imageUrl) ? "⬇" : "⬇"}
+                </button>
               </div>
             </div>
           </div>

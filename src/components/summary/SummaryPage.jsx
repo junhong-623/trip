@@ -134,6 +134,7 @@ export default function SummaryPage({ toast }) {
   const personOwes = {};
   people.forEach(p => { personPaid[p.id] = 0; personOwes[p.id] = 0; });
 
+  // Base: paid = receipts they paid for, owes = what they owe others
   receipts.forEach(r => {
     if (r.payerId && personPaid[r.payerId] !== undefined) {
       personPaid[r.payerId] = roundMoney(personPaid[r.payerId] + parseAmount(r.totalAmount));
@@ -143,6 +144,14 @@ export default function SummaryPage({ toast }) {
       if (personOwes[d.debtorId] !== undefined)
         personOwes[d.debtorId] = roundMoney(personOwes[d.debtorId] + d.amount);
     });
+  });
+
+  // Settlements: debtor paid creditor → debtor's paid increases, creditor's owes decreases
+  settlements.filter(s => s.cleared).forEach(s => {
+    if (personPaid[s.debtorId] !== undefined)
+      personPaid[s.debtorId] = roundMoney(personPaid[s.debtorId] + s.amount);
+    if (personOwes[s.debtorId] !== undefined)
+      personOwes[s.debtorId] = roundMoney(personOwes[s.debtorId] - s.amount);
   });
 
   // Count pending debts across all receipts
@@ -263,15 +272,13 @@ export default function SummaryPage({ toast }) {
                             </div>
                           </div>
                           <div className="debt-row-right">
-                            <span className={`amount ${settled ? "" : "amount-negative"}`} style={{ fontWeight: 600 }}>
+                            <span className={`amount ${settled ? "amount-settled" : "amount-negative"}`} style={{ fontWeight: 600 }}>
                               {formatAmount(debt.amount, currency)}
-                              {settled && " ✓"}
                             </span>
                             {settled ? (
                               <button
                                 className="btn btn-ghost btn-sm unsettle-btn"
                                 onClick={() => handleUnsettle(debt)}
-                                title={tr.unsettle || "Undo"}
                               >
                                 ↩ {tr.unsettle || "Undo"}
                               </button>
