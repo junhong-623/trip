@@ -36,16 +36,38 @@ cloudinary.config({
 
 // ─── Google Auth (Vision OCR only) ───────────────────────────────────────────
 function getAuth() {
-  const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
   const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
+
   let credentials;
+
   if (keyJson) {
-    credentials = JSON.parse(keyJson);
+    // Railway: env var contains the raw JSON string
+    try {
+      credentials = JSON.parse(keyJson);
+    } catch (e) {
+      throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON: " + e.message);
+    }
   } else if (keyPath) {
-    credentials = require(path.resolve(keyPath));
+    // Local: env var contains path to key file
+    const fs = require("fs");
+    const resolved = path.resolve(keyPath);
+    if (!fs.existsSync(resolved)) {
+      throw new Error("key file not found at: " + resolved);
+    }
+    credentials = JSON.parse(fs.readFileSync(resolved, "utf8"));
   } else {
-    throw new Error("No Google Service Account credentials found.");
+    throw new Error(
+      "No credentials found. Set GOOGLE_SERVICE_ACCOUNT_JSON (Railway) " +
+      "or GOOGLE_SERVICE_ACCOUNT_KEY_PATH (local)."
+    );
   }
+
+  // Fix private_key newlines that may get mangled in env vars
+  if (credentials.private_key) {
+    credentials.private_key = credentials.private_key.replace(/\n/g, "\n");
+  }
+
   return new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/cloud-vision"],
