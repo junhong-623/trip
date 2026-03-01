@@ -250,13 +250,16 @@ export default function SummaryPage({ toast }) {
                       return (
                         <div key={i} className={`debt-row ${settled ? "debt-row-settled" : ""}`}>
                           <div className="debt-row-people">
-                            <img src={debtor.avatarUrl || dicebearUrl(debtor.name)} alt={debtor.name}
-                              className="avatar" style={{ width: 28, height: 28 }} />
+                            <div className="debt-person">
+                              <img src={debtor.avatarUrl || dicebearUrl(debtor.name)} alt={debtor.name}
+                                className="avatar" style={{ width: 36, height: 36 }} />
+                              <span className="debt-person-name">{debtor.name}</span>
+                            </div>
                             <span className="debt-row-arrow">→</span>
-                            <img src={creditor.avatarUrl || dicebearUrl(creditor.name)} alt={creditor.name}
-                              className="avatar" style={{ width: 28, height: 28 }} />
-                            <div className="debt-row-names">
-                              <span><strong>{debtor.name}</strong> → <strong>{creditor.name}</strong></span>
+                            <div className="debt-person">
+                              <img src={creditor.avatarUrl || dicebearUrl(creditor.name)} alt={creditor.name}
+                                className="avatar" style={{ width: 36, height: 36 }} />
+                              <span className="debt-person-name">{creditor.name}</span>
                             </div>
                           </div>
                           <div className="debt-row-right">

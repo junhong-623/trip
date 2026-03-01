@@ -98,6 +98,27 @@ export default function GalleryPage({ toast }) {
     }
   };
 
+  const handleDownload = async (photo) => {
+    try {
+      const url = photo.imageUrl;
+      const isVid = photo.isVideo || isVideoUrl(url);
+      const ext = isVid ? (url.match(/\.(mp4|mov|webm|avi)/i)?.[1] || "mp4") : (url.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1] || "jpg");
+      const filename = `wandersplit_${photo.id || Date.now()}.${ext}`;
+
+      // Fetch as blob to trigger native download (works on mobile too)
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.show("Download failed", "error");
+    }
+  };
+
   const handleDelete = async (photo) => {
     if (!confirm(tr.confirmDeletePhoto)) return;
     try {
@@ -172,6 +193,8 @@ export default function GalleryPage({ toast }) {
                         onClick={e => e.stopPropagation()}>📍</a>
                     )}
                     <button className="btn btn-icon" style={{ background: "rgba(255,255,255,0.9)" }}
+                      onClick={e => { e.stopPropagation(); handleDownload(photo); }}>⬇</button>
+                    <button className="btn btn-icon" style={{ background: "rgba(255,255,255,0.9)" }}
                       onClick={e => { e.stopPropagation(); handleDelete(photo); }}>🗑</button>
                   </div>
                   {photo.note && <div className="photo-note">{photo.note}</div>}
@@ -210,6 +233,8 @@ export default function GalleryPage({ toast }) {
                     {tr.viewOnMap}
                   </a>
                 )}
+                <button className="btn btn-icon" style={{ background: "rgba(255,255,255,0.15)", color: "#fff", marginLeft: 8 }}
+                  onClick={() => handleDownload(lightbox)}>⬇</button>
               </div>
             </div>
           </div>
