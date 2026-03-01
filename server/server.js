@@ -11,7 +11,7 @@ const cloudinary = require("cloudinary").v2;
 const path = require("path");
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 app.use(cors({
   origin: function(origin, callback) {
@@ -85,7 +85,7 @@ app.post("/api/drive/upload", upload.single("file"), async (req, res) => {
 
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { public_id: publicId, resource_type: "image", overwrite: false },
+        { public_id: publicId, resource_type: "auto", overwrite: false },
         (error, result) => error ? reject(error) : resolve(result)
       );
       stream.end(req.file.buffer);
@@ -212,6 +212,8 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
 
     // ── Items ─────────────────────────────────────────────────────────────────
     const items = [];
+    const skipLine = /合計|小計|サービス|消費税|内税|外税|お釣|現金|領収|伝票|テーブル|No\.|合計点数|tip|total|tax|service|discount|subtotal/i;
+    const totalLine = /合\s*計|お会計|現計|お\s*[約計]|お支払/;
 
     if (isJpReceipt) {
       // Helper: extract yen amount handling OCR artifacts
@@ -247,42 +249,35 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
         return parseInt(groups.join("")) || null;
       }
 
-      // Helper: find yen price in a line or the next few lines
-      function findPriceNearby(lineIdx) {
-        // Check current line and up to 2 following lines for a ¥ amount
-        for (let offset = 0; offset <= 2; offset++) {
-          const l = lines[lineIdx + offset] || "";
-          const val = extractYen(l);
-          if (val !== null) return { price: val, skipLines: offset };
-        }
-        return null;
+      // Helper: detect OCR garbage names (no recognizable letters)
+      function isGarbage(name) {
+        return name.length < 1 || (
+          !/[a-zA-Z\u3040-\u30ff\u4e00-\u9fff]/.test(name) && name.length < 3
+        );
       }
 
-      const consumed = new Set(); // track line indices already used as price lines
+      // Collect item names and prices in parallel order, then zip them.
+      // This handles scrambled OCR line order better than sequential matching.
+      const itemNames = [];
+      const itemPrices = [];
 
-      for (let i = 0; i < lines.length; i++) {
-        if (consumed.has(i)) continue;
-        const line = lines[i];
-
-        // Only pick lines starting with * or ＊ — actual ordered items
-        if (!/^[＊*]/.test(line)) continue;
-
-        const name = line.replace(/^[＊*]\s*/, "").trim();
-        if (name.length < 1) continue;
-
-        // Try to find price on same line first
-        let price = extractYen(line);
-        if (price) {
-          items.push({ name, price });
-        } else {
-          // Price is on a following line (may have @qty line in between)
-          const result = findPriceNearby(i + 1);
-          if (result) {
-            items.push({ name, price: result.price });
-            // Mark the price line as consumed
-            consumed.add(i + 1 + result.skipLines);
-          }
+      for (const line of lines) {
+        // Item names: lines starting with * / ＊
+        if (/^[＊*]/.test(line) && !skipLine.test(line)) {
+          const name = line.replace(/^[＊*]\s*/, "").trim();
+          if (!isGarbage(name)) itemNames.push(name);
         }
+        // Item prices: ¥ lines that are NOT totals or tax/service lines
+        if (!totalLine.test(line) && !skipLine.test(line)) {
+          const val = extractYen(line);
+          if (val !== null) itemPrices.push(val);
+        }
+      }
+
+      // Zip names and prices (trim to shorter list)
+      const count = Math.min(itemNames.length, itemPrices.length);
+      for (let i = 0; i < count; i++) {
+        items.push({ name: itemNames[i], price: itemPrices[i] });
       }
     } else {
       // English receipt: "Item name   $12.34"
