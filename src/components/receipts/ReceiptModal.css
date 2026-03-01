@@ -1,22 +1,63 @@
-.receipt-modal-sheet {
-  padding-bottom: 24px;
+/* ── Modal wrapper — clips the sliding panels ─────────────────────────────── */
+.receipt-modal-wrap {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 600px;
+  height: 92vh;
+  border-radius: 20px 20px 0 0;
+  background: white;
+  overflow: hidden;          /* clips panels sliding out */
+  display: flex;
+  flex-direction: row;
+  box-shadow: 0 -4px 40px rgba(0,0,0,0.18);
 }
+
+/* ── Each panel ───────────────────────────────────────────────────────────── */
+.receipt-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 20px 16px;
+  overflow-y: auto;
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  background: white;
+  will-change: transform;
+}
+
+/* Main form: default visible, slides left when item editor opens */
+.main-panel {
+  transform: translateX(0);
+}
+.main-panel.slide-left {
+  transform: translateX(-100%);
+}
+
+/* Item editor: starts off-screen to the right, slides in */
+.item-editor-panel {
+  transform: translateX(100%);
+}
+.item-editor-panel.slide-in {
+  transform: translateX(0);
+}
+
+/* ── OCR banner ───────────────────────────────────────────────────────────── */
 .ocr-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--sky-pale);
-  border: 1.5px dashed var(--sky-light);
-  border-radius: var(--radius);
+  border: 1.5px dashed var(--sky-light, #7ec8e3);
+  border-radius: 12px;
   padding: 12px 14px;
   margin-bottom: 16px;
   gap: 12px;
+  flex-shrink: 0;
 }
-.ocr-banner-text {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.ocr-banner-text { display: flex; align-items: center; gap: 10px; }
 .ocr-icon { font-size: 24px; }
 .ocr-loading {
   display: flex;
@@ -24,26 +65,27 @@
   gap: 10px;
   padding: 10px 14px;
   background: var(--gold-pale);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   margin-bottom: 14px;
   font-size: 13px;
   color: var(--ink-soft);
+  flex-shrink: 0;
 }
+
+/* ── Receipt form sections ────────────────────────────────────────────────── */
 .receipt-form {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  flex: 1;
 }
 .form-section {
   padding: 14px 0;
   border-bottom: 1px solid var(--sand-dark);
 }
 .form-section:last-child { border-bottom: none; }
-.payer-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+
+/* ── Payer row ────────────────────────────────────────────────────────────── */
+.payer-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .payer-btn {
   display: flex;
   align-items: center;
@@ -62,34 +104,194 @@
   background: var(--terracotta-pale);
   color: var(--terracotta);
 }
-.items-list {
+
+/* ── Items section header ─────────────────────────────────────────────────── */
+.items-section-header {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
-.item-row {
+.items-edit-btn {
   display: flex;
   align-items: center;
   gap: 6px;
+  position: relative;
 }
-.item-name-input { flex: 1; }
-.item-price-input { width: 80px; flex-shrink: 0; }
-.item-eaters-btn {
-  width: 48px; height: 38px;
-  border: 1.5px solid var(--sand-deep);
-  border-radius: var(--radius-sm);
-  background: white;
-  cursor: pointer;
-  display: flex;
+.items-count-badge {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  transition: border-color 0.15s;
-  padding-left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
 }
-.item-eaters-btn:hover { border-color: var(--terracotta); }
-.participants-row {
+
+/* ── Items display (read-only on main panel) ──────────────────────────────── */
+.items-empty-display {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--sand);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.items-display-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.item-display-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--sand);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.item-display-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item-display-price {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.item-display-eaters {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+/* Items total summary row */
+.items-total-row {
+  display: flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px 0;
+  margin-top: 2px;
+  border-top: 1px dashed var(--sand-deep);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.items-total-row .amount { margin-left: auto; font-weight: 600; }
+.items-budget-hint {
+  width: 100%;
+  font-size: 11px;
+  padding: 0 2px;
+}
+.items-total-row.over-budget .amount { color: var(--error); }
+.items-budget-hint { color: var(--success, #4caf50); }
+.items-total-row.over-budget .items-budget-hint { color: var(--error); }
+
+/* ── Participants row ─────────────────────────────────────────────────────── */
+.participants-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── Item editor panel ────────────────────────────────────────────────────── */
+.item-editor-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 16px;
+  overflow-y: auto;
+}
+
+/* Budget progress bar */
+.budget-bar-wrap {
+  margin: 0 0 12px;
+  flex-shrink: 0;
+}
+.budget-bar-track {
+  height: 6px;
+  background: var(--sand-dark);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.budget-bar-fill {
+  height: 100%;
+  background: var(--terracotta);
+  border-radius: 3px;
+  transition: width 0.3s ease, background 0.2s;
+}
+.budget-bar-fill.over { background: var(--error); }
+.budget-bar-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: right;
+}
+.budget-bar-label.over { color: var(--error); font-weight: 600; }
+
+/* Each item editor row */
+.item-editor-row {
+  background: white;
+  border: 1.5px solid var(--sand-dark);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s;
+}
+.item-editor-row:focus-within { border-color: var(--terracotta); }
+
+.item-editor-fields {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.item-price-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 90px;
+}
+.item-price-field { width: 100%; }
+.item-price-field.price-over {
+  border-color: var(--error) !important;
+  background: var(--error-pale);
+}
+.price-over-hint {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  font-size: 10px;
+  color: var(--error);
+  font-weight: 600;
+}
+
+.item-editor-bottom {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
+.item-eaters-selector {
+  flex: 1;
+  min-height: 38px;
+  border: 1.5px dashed var(--sand-deep);
+  border-radius: 8px;
+  background: var(--sand);
+  cursor: pointer;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  transition: border-color 0.15s;
+  text-align: left;
+}
+.item-eaters-selector:hover { border-color: var(--terracotta); }
+.eaters-placeholder { font-size: 13px; color: var(--ink-muted); }
+.eaters-avatars { display: flex; align-items: center; }
+.item-remove-btn { flex-shrink: 0; }
