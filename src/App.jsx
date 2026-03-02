@@ -19,7 +19,7 @@ function AppContent() {
           <span className="splash-name-en">MateTrip</span>
           <span className="splash-name-zh">伴·旅</span>
         </div>
-        <div className="splash-slogan">不是分账工具，是一起旅行的记忆。</div>
+        <div className="splash-slogan">算清一路琐碎，存下全程风景。</div>
         <div className="loading-spinner" style={{marginTop:24}} />
       </div>
     );

@@ -78,7 +78,7 @@ export default function LoginPage() {
           <h1 className="login-title">
             MateTrip <span className="login-title-zh">伴旅</span>
           </h1>
-          <p className="login-slogan">不是分账工具，是一起旅行的记忆。</p>
+          <p className="login-slogan">{tr.appSubtitle}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">

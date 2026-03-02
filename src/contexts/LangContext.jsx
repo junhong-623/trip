@@ -10,7 +10,7 @@ export const T = {
   en: {
     // App
     appName: "MateTrip",
-    appSubtitle: "Travel expenses, beautifully tracked",
+    appSubtitle: "Count every penny, keep every memory.",
     // Auth
     email: "Email",
     username: "Username",
@@ -224,7 +224,7 @@ export const T = {
 
   zh: {
     appName: "伴旅",
-    appSubtitle: "不是分账工具，是一起旅行的记忆。",
+    appSubtitle: "算清一路琐碎，存下全程风景。",
     email: "电子邮件",
     username: "用户名",
     usernameOrEmail: "用户名或电子邮件",
@@ -428,7 +428,7 @@ export const T = {
 
   ms: {
     appName: "MateTrip",
-    appSubtitle: "Perbelanjaan perjalanan, dicatat dengan indah",
+    appSubtitle: "Hitung setiap sen, simpan setiap kenangan.",
     email: "E-mel",
     username: "Nama Pengguna",
     usernameOrEmail: "Nama Pengguna atau E-mel",
