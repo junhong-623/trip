@@ -394,6 +394,33 @@ export default function GalleryPage({ toast }) {
                 <input className="form-input" value={photoForm.tags}
                   onChange={e => setPhotoForm(f => ({ ...f, tags: e.target.value }))}
                   placeholder={tr.tagPlaceholder || "beach, food, night"} />
+                {allTagsList.length > 0 && (
+                  <div className="tag-suggestions">
+                    {allTagsList.map(tag => {
+                      const currentTags = photoForm.tags
+                        ? photoForm.tags.split(/[,\s]+/).map(t => t.replace(/^#/, "").trim().toLowerCase()).filter(Boolean)
+                        : [];
+                      const isActive = currentTags.includes(tag);
+                      return (
+                        <button key={tag} type="button"
+                          className={`tag-suggest-btn ${isActive ? "active" : ""}`}
+                          onClick={() => {
+                            setPhotoForm(f => {
+                              const tags = f.tags
+                                ? f.tags.split(/[,\s]+/).map(t => t.replace(/^#/, "").trim().toLowerCase()).filter(Boolean)
+                                : [];
+                              const updated = isActive
+                                ? tags.filter(t => t !== tag)
+                                : [...tags, tag];
+                              return { ...f, tags: updated.join(", ") };
+                            });
+                          }}>
+                          {isActive ? "✓ " : ""}#{tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowModal(false)}>
