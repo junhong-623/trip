@@ -181,6 +181,14 @@ export const T = {
     notSet: "Not set",
     about: "About",
     aboutText: "TripMate — Travel Expense Tracker\nBuilt with React + Firebase + Google Drive API",
+
+    // Install PWA
+    installApp: "Add to Home Screen",
+    installAppDesc: "Install TripMate on your phone for quick access — works like a native app.",
+    installIOS: "On iPhone / iPad",
+    installIOSSteps: "1. Open in Safari\n2. Tap the Share button (□↑) at the bottom\n3. Scroll down and tap \"Add to Home Screen\"\n4. Tap \"Add\" to confirm",
+    installAndroid: "On Android",
+    installAndroidSteps: "1. Open in Chrome\n2. Tap the ⋮ menu at the top right\n3. Tap \"Add to Home screen\"\n4. Tap \"Add\" to confirm",
     language: "Language",
     // No trip
     noTripSelected: "No trip selected",
@@ -354,6 +362,14 @@ export const T = {
     notSet: "未设置",
     about: "关于",
     aboutText: "TripMate 旅伴 — 旅行分账记录\n基于 React + Firebase + Google Drive API",
+
+    // 安装 PWA
+    installApp: "添加到主屏幕",
+    installAppDesc: "将旅伴安装到手机桌面，随时快速打开，体验和原生 App 一样流畅。",
+    installIOS: "iPhone / iPad",
+    installIOSSteps: "1. 用 Safari 打开网站\n2. 点击底部的分享按钮（□↑）\n3. 向下滑动，点击「添加到主屏幕」\n4. 点击「添加」确认",
+    installAndroid: "Android 手机",
+    installAndroidSteps: "1. 用 Chrome 打开网站\n2. 点击右上角 ⋮ 菜单\n3. 点击「添加到主屏幕」\n4. 点击「添加」确认",
     language: "语言",
     noTripSelected: "未选择行程",
     selectTripFirst: "请先选择或创建一个行程。",
@@ -525,6 +541,14 @@ export const T = {
     notSet: "Tidak ditetapkan",
     about: "Tentang",
     aboutText: "TripMate — Penjejak Perbelanjaan Perjalanan\nDibina dengan React + Firebase + Google Drive API",
+
+    // Pasang PWA
+    installApp: "Tambah ke Skrin Utama",
+    installAppDesc: "Pasang TripMate di telefon anda untuk akses pantas — berfungsi seperti aplikasi asli.",
+    installIOS: "iPhone / iPad",
+    installIOSSteps: "1. Buka dalam Safari\n2. Ketik butang Kongsi (□↑) di bawah\n3. Tatal ke bawah dan ketik \"Tambah ke Skrin Utama\"\n4. Ketik \"Tambah\" untuk mengesahkan",
+    installAndroid: "Android",
+    installAndroidSteps: "1. Buka dalam Chrome\n2. Ketik menu ⋮ di kanan atas\n3. Ketik \"Tambah ke skrin utama\"\n4. Ketik \"Tambah\" untuk mengesahkan",
     language: "Bahasa",
     noTripSelected: "Tiada perjalanan dipilih",
     selectTripFirst: "Sila pilih atau buat perjalanan dahulu.",

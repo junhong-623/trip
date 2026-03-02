@@ -74,6 +74,29 @@ export default function SettingsPage({ toast }) {
         </div>
       )}
 
+
+      {/* Install App */}
+      <div className="card" style={{marginBottom:12}}>
+        <div className="section-title" style={{marginBottom:8}}>📲 {tr.installApp}</div>
+        <p style={{fontSize:13,color:"var(--ink-muted)",marginBottom:14,lineHeight:1.6}}>
+          {tr.installAppDesc}
+        </p>
+        <div style={{marginBottom:12}}>
+          <div style={{fontWeight:600,fontSize:13,marginBottom:6}}>🍎 {tr.installIOS}</div>
+          <div style={{fontSize:13,color:"var(--ink-muted)",lineHeight:1.8,whiteSpace:"pre-line",
+            background:"var(--sand)",borderRadius:8,padding:"10px 12px"}}>
+            {tr.installIOSSteps}
+          </div>
+        </div>
+        <div>
+          <div style={{fontWeight:600,fontSize:13,marginBottom:6}}>🤖 {tr.installAndroid}</div>
+          <div style={{fontSize:13,color:"var(--ink-muted)",lineHeight:1.8,whiteSpace:"pre-line",
+            background:"var(--sand)",borderRadius:8,padding:"10px 12px"}}>
+            {tr.installAndroidSteps}
+          </div>
+        </div>
+      </div>
+
       {/* About */}
       <div className="card">
         <div className="section-title" style={{marginBottom:8}}>{tr.about}</div>
