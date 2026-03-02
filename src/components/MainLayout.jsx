@@ -59,7 +59,10 @@ export default function MainLayout() {
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
             <img src="/trip/icons/icon-192.png" alt="" className="app-brand-icon-img" />
-            <span className="app-brand-name">{tr.appName}</span>
+            <div className="app-brand-text">
+              <span className="app-brand-name">{tr.appName}</span>
+              <span className="app-brand-slogan">{tr.appSubtitle}</span>
+            </div>
           </button>
 
           {/* Active trip pill — click to go to trips */}
