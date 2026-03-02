@@ -75,6 +75,38 @@ export const updateSettlement = (tripId, settlementId, data) =>
 export const deleteSettlement = (tripId, settlementId) =>
   deleteDoc(subDoc(tripId, "settlements", settlementId));
 
+// ─── Trip cascade delete ──────────────────────────────────────────────────────
+// Deletes all sub-collections of a trip in batches (Firestore limit: 500 per batch)
+export const deleteTripSubcollections = async (tripId) => {
+  const COLS = ["receipts", "people", "photos", "settlements"];
+  const fileIds = []; // Collect Drive fileIds for cleanup
+
+  for (const col of COLS) {
+    const snap = await getDocs(sub(tripId, col));
+    if (snap.empty) continue;
+
+    // Collect fileIds from photos
+    if (col === "photos") {
+      snap.docs.forEach(d => {
+        if (d.data().fileId) fileIds.push(d.data().fileId);
+      });
+    }
+
+    // Delete in batches of 400 (safe below 500 limit)
+    const chunks = [];
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      chunks.push(snap.docs.slice(i, i + 400));
+    }
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      chunk.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+  }
+
+  return fileIds; // Caller handles Drive deletion
+};
+
 // ─── Trip sharing ──────────────────────────────────────────────────────────────
 export const getTripByJoinCode = async (joinCode) => {
   const { collection, query, where, getDocs } = await import("firebase/firestore");

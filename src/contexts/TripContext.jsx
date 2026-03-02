@@ -4,6 +4,8 @@ import {
   doc, query, where, orderBy, serverTimestamp, arrayUnion, arrayRemove, getDocs
 } from "firebase/firestore";
 import { db } from "../services/firebase";
+import { deleteTripSubcollections } from "../services/firestore";
+import { deleteFromDrive } from "../services/api";
 import { useAuth } from "./AuthContext";
 
 const TripContext = createContext(null);
@@ -109,7 +111,18 @@ export function TripProvider({ children }) {
   };
 
   const deleteTrip = async (tripId) => {
+    // 1. Delete all sub-collections (receipts, people, photos, settlements)
+    //    and get back any Drive fileIds that need to be deleted
+    const fileIds = await deleteTripSubcollections(tripId);
+
+    // 2. Delete Drive files (photos/videos) in parallel, silently ignore failures
+    if (fileIds.length > 0) {
+      await Promise.allSettled(fileIds.map(id => deleteFromDrive(id)));
+    }
+
+    // 3. Delete the trip document itself
     await deleteDoc(doc(db, "trips", tripId));
+
     if (activeTrip?.id === tripId) setActiveTrip(trips.find(t => t.id !== tripId) || null);
   };
 

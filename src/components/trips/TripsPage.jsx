@@ -85,9 +85,17 @@ export default function TripsPage({ toast, onNavigate }) {
 
   const handleDelete = async (trip, e) => {
     e.stopPropagation();
-    if (!confirm(t(tr.confirmDeleteTrip, trip.name))) return;
-    await deleteTrip(trip.id);
-    toast.show(tr.tripDeleted);
+    const msg = `删除「${trip.name}」？
+
+所有账单、照片、成员、结算记录将被永久删除，无法恢复。`;
+    if (!confirm(msg)) return;
+    try {
+      toast.show("删除中…", "info");
+      await deleteTrip(trip.id);
+      toast.show(tr.tripDeleted, "success");
+    } catch (err) {
+      toast.show("删除失败：" + err.message, "error");
+    }
   };
 
   const handleLeave = async (trip, e) => {
