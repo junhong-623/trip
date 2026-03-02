@@ -17,30 +17,36 @@ export default function TripsPage({ toast, onNavigate }) {
   const [showJoin, setShowJoin] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
-  const [showMembers, setShowMembers] = useState(null); // trip object
+  const [showMembers, setShowMembers] = useState(null);
   const [memberProfiles, setMemberProfiles] = useState([]);
+  const [creatorProfile, setCreatorProfile] = useState(null);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [kicking, setKicking] = useState(null);
+
+  const fetchProfile = async (uid) => {
+    try {
+      const snap = await getDoc(doc(db, "usernames", uid));
+      if (snap.exists()) return { uid, ...snap.data() };
+    } catch {}
+    return { uid, displayName: uid.slice(0, 8) + "…", username: "", email: "" };
+  };
 
   const openMembers = async (trip, e) => {
     e.stopPropagation();
     setShowMembers(trip);
     setMemberProfiles([]);
-    if (!trip.memberIds?.length) return;
+    setCreatorProfile(null);
     setLoadingMembers(true);
     try {
-      const profiles = await Promise.all(
-        trip.memberIds.map(async (uid) => {
-          try {
-            const snap = await getDoc(doc(db, "usernames", uid));
-            if (snap.exists()) return { uid, ...snap.data() };
-            return { uid, displayName: uid.slice(0, 8) + "…", username: "", email: "" };
-          } catch {
-            return { uid, displayName: uid.slice(0, 8) + "…", username: "", email: "" };
-          }
-        })
-      );
-      setMemberProfiles(profiles);
+      // Always fetch creator profile from Firestore
+      const creator = await fetchProfile(trip.createdBy);
+      setCreatorProfile(creator);
+
+      // Fetch joined members
+      if (trip.memberIds?.length) {
+        const profiles = await Promise.all(trip.memberIds.map(fetchProfile));
+        setMemberProfiles(profiles);
+      }
     } finally {
       setLoadingMembers(false);
     }
@@ -248,18 +254,26 @@ export default function TripsPage({ toast, onNavigate }) {
             </div>
 
             {/* Creator row */}
-            <div className="member-row">
-              <div className="member-avatar">
-                {user?.displayName?.[0]?.toUpperCase() || "?"}
-              </div>
-              <div className="member-info">
-                <span className="member-name">{user?.displayName || "You"}</span>
-                {user?.email && (
-                  <span style={{fontSize:11,color:"var(--ink-muted)"}}>{user.email}</span>
-                )}
-                <span className="member-badge owner">👑 {tr.owner}</span>
-              </div>
-            </div>
+            {creatorProfile && (() => {
+              const isMe = creatorProfile.uid === user?.uid;
+              return (
+                <div className={`member-row ${isMe ? "member-row-me" : ""}`}>
+                  <div className="member-avatar">
+                    {creatorProfile.displayName?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div className="member-info">
+                    <span className="member-name">
+                      {creatorProfile.displayName}
+                      {isMe && <span className="member-you-tag">你</span>}
+                    </span>
+                    {creatorProfile.email && (
+                      <span style={{fontSize:11,color:"var(--ink-muted)"}}>{creatorProfile.email}</span>
+                    )}
+                    <span className="member-badge owner">👑 {tr.owner}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Members */}
             {loadingMembers ? (
@@ -271,13 +285,18 @@ export default function TripsPage({ toast, onNavigate }) {
                 No one has joined yet. Share the code above!
               </div>
             ) : (
-              memberProfiles.map(p => (
-                <div key={p.uid} className="member-row">
+              memberProfiles.map(p => {
+                const isMe = p.uid === user?.uid;
+                return (
+                <div key={p.uid} className={`member-row ${isMe ? "member-row-me" : ""}`}>
                   <div className="member-avatar member-avatar-joined">
                     {p.displayName?.[0]?.toUpperCase() || "?"}
                   </div>
                   <div className="member-info">
-                    <span className="member-name">{p.displayName}</span>
+                    <span className="member-name">
+                      {p.displayName}
+                      {isMe && <span className="member-you-tag">你</span>}
+                    </span>
                     {p.email && (
                       <span style={{fontSize:11,color:"var(--ink-muted)"}}>{p.email}</span>
                     )}
@@ -295,7 +314,7 @@ export default function TripsPage({ toast, onNavigate }) {
                     </button>
                   )}
                 </div>
-              ))
+              )})
             )}
           </div>
         </div>

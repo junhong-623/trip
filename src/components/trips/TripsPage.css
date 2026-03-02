@@ -159,3 +159,25 @@
   background: #e8f4f0;
   color: #2a8a6a;
 }
+
+/* Highlight current user's row */
+.member-row-me {
+  background: var(--terracotta-pale);
+  margin: 0 -4px;
+  padding: 10px 4px;
+  border-radius: 8px;
+}
+.member-row-me .member-name {
+  color: var(--terracotta);
+}
+.member-you-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--terracotta);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 8px;
+  vertical-align: middle;
+}
