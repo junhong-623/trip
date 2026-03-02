@@ -59,7 +59,7 @@ export default function MainLayout() {
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
             <span className="app-brand-icon">✈</span>
-            <span className="app-brand-name">TripMate</span>
+            <span className="app-brand-name">{tr.appName}</span>
           </button>
 
           {/* Active trip pill — click to go to trips */}
