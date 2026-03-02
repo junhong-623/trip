@@ -1,7 +1,7 @@
 // firestore.js — CRUD operations for all sub-collections
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  getDocs, onSnapshot, query, orderBy, serverTimestamp, writeBatch
+  getDocs, onSnapshot, query, where, orderBy, serverTimestamp, writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -36,8 +36,16 @@ export const addReceipt = (tripId, data) =>
 export const updateReceipt = (tripId, receiptId, data) =>
   updateDoc(subDoc(tripId, "receipts", receiptId), data);
 
-export const deleteReceipt = (tripId, receiptId) =>
-  deleteDoc(subDoc(tripId, "receipts", receiptId));
+export const deleteReceipt = async (tripId, receiptId) => {
+  // Delete the receipt + all associated settlements in a batch
+  const batch = writeBatch(db);
+  batch.delete(subDoc(tripId, "receipts", receiptId));
+  const settlementsSnap = await getDocs(
+    query(sub(tripId, "settlements"), where("receiptId", "==", receiptId))
+  );
+  settlementsSnap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+};
 
 // ─── Photos ───────────────────────────────────────────────────────────────────
 export const subscribePhotos = (tripId, cb) =>
