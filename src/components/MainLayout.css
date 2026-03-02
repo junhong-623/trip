@@ -16,8 +16,7 @@
   background: rgba(245, 239, 230, 0.92);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--sand-dark);
-  /* PWA: push content below phone status bar */
-  padding-top: env(safe-area-inset-top, 0px);
+
 }
 .app-header-inner {
   display: flex;
