@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTrip } from "../../contexts/TripContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useLang } from "../../contexts/LangContext";
 import {
   subscribeReceipts, subscribePeople, subscribeSettlements,
@@ -58,6 +59,7 @@ function computeReceiptDebts(receipt, people) {
 
 export default function SummaryPage({ toast }) {
   const { activeTrip } = useTrip();
+  const { user } = useAuth();
   const { tr, t } = useLang();
   const [receipts, setReceipts] = useState([]);
   const [people, setPeople] = useState([]);
@@ -102,6 +104,7 @@ export default function SummaryPage({ toast }) {
         creditorId: debt.creditorId,
         amount: debt.amount,
         cleared: true,
+        createdBy: user.uid,
       });
       toast.show(tr.settled, "success");
     } catch (e) {
@@ -281,21 +284,24 @@ export default function SummaryPage({ toast }) {
                             <span className={`amount ${settled ? "amount-settled" : "amount-negative"}`} style={{ fontWeight: 600 }}>
                               {formatAmount(debt.amount, currency)}
                             </span>
-                            {settled ? (
-                              <button
-                                className="btn btn-ghost btn-sm unsettle-btn"
-                                onClick={() => handleUnsettle(debt)}
-                              >
-                                ↩ {tr.unsettle || "Undo"}
-                              </button>
-                            ) : (
-                              <button
-                                className="btn btn-primary btn-sm"
-                                onClick={() => handleSettle(debt)}
-                              >
-                                {tr.settled}
-                              </button>
-                            )}
+                            {(() => {
+                              const settlementDoc = getSettlementDoc(debt.receiptId, debt.debtorId, debt.creditorId);
+                              const canModify = !settled || (settlementDoc?.createdBy === user?.uid);
+                              if (settled) {
+                                return canModify ? (
+                                  <button className="btn btn-ghost btn-sm unsettle-btn" onClick={() => handleUnsettle(debt)}>
+                                    ↩ {tr.unsettle || "Undo"}
+                                  </button>
+                                ) : (
+                                  <span style={{fontSize:12,color:"var(--ink-muted)"}}>✓ {tr.settled}</span>
+                                );
+                              }
+                              return (
+                                <button className="btn btn-primary btn-sm" onClick={() => handleSettle(debt)}>
+                                  {tr.settled}
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
                       );

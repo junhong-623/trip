@@ -46,6 +46,30 @@ export default function TripModal({ trip, onSave, onClose }) {
         </div>
 
         <form onSubmit={handleSubmit} style={{display:"flex",flexDirection:"column",gap:16}}>
+          {/* Join Code — show for existing trips */}
+          {trip?.joinCode && (
+            <div className="form-group">
+              <label className="form-label">{tr.tripCode}</label>
+              <div style={{
+                display:"flex",alignItems:"center",gap:10,
+                background:"var(--sand)",borderRadius:10,padding:"10px 14px"
+              }}>
+                <span style={{
+                  fontWeight:800,fontSize:22,letterSpacing:"0.2em",
+                  color:"var(--terracotta)",flex:1,textAlign:"center"
+                }}>{trip.joinCode}</span>
+                <button type="button" className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(trip.joinCode);
+                  }}>
+                  📋
+                </button>
+              </div>
+              <p className="form-hint">{tr.tripCodeHint}</p>
+            </div>
+          )}
+
+
           {/* Emoji picker */}
           <div className="form-group">
             <label className="form-label">{tr.icon}</label>

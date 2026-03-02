@@ -54,3 +54,48 @@
   display: flex;
   gap: 8px;
 }
+
+/* Trip sharing badges */
+.trip-card-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+.trip-role-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.trip-role-badge.owner {
+  background: var(--terracotta-pale);
+  color: var(--terracotta);
+}
+.trip-role-badge.joined {
+  background: #e8f4f0;
+  color: #2a8a6a;
+}
+.trip-member-count {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* Join code pill in trip footer */
+.trip-join-code {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  background: var(--sand);
+  border: 1.5px dashed var(--sand-deep);
+  color: var(--ink-muted);
+  padding: 2px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-left: auto;
+}
+.trip-join-code:hover {
+  background: var(--sand-dark);
+}
