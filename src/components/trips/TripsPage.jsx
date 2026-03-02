@@ -182,11 +182,11 @@ export default function TripsPage({ toast, onNavigate }) {
                     )}
                     {memberCount(trip) > 1 && (
                       <span
-                        className={`trip-member-count ${isOwner(trip) ? "clickable" : ""}`}
-                        onClick={isOwner(trip) ? (e) => openMembers(trip, e) : undefined}
+                        className="trip-member-count clickable"
+                        onClick={(e) => openMembers(trip, e)}
                       >
                         👥 {memberCount(trip)} {tr.membersCount}
-                        {isOwner(trip) && <span style={{marginLeft:3,opacity:0.5,fontSize:10}}>›</span>}
+                        <span style={{marginLeft:3,opacity:0.5,fontSize:10}}>›</span>
                       </span>
                     )}
                   </div>
@@ -283,15 +283,17 @@ export default function TripsPage({ toast, onNavigate }) {
                     )}
                     <span className="member-badge joined">{tr.youJoined}</span>
                   </div>
-                  <button
-                    className="btn btn-icon btn-sm"
-                    style={{color:"var(--error)",marginLeft:"auto"}}
-                    disabled={kicking === p.uid}
-                    onClick={() => handleKick(showMembers, p.uid)}
-                    title="Remove member"
-                  >
-                    {kicking === p.uid ? "…" : "✕"}
-                  </button>
+                  {isOwner(showMembers) && (
+                    <button
+                      className="btn btn-icon btn-sm"
+                      style={{color:"var(--error)",marginLeft:"auto"}}
+                      disabled={kicking === p.uid}
+                      onClick={() => handleKick(showMembers, p.uid)}
+                      title="Remove member"
+                    >
+                      {kicking === p.uid ? "…" : "✕"}
+                    </button>
+                  )}
                 </div>
               ))
             )}
