@@ -1,10 +1,11 @@
 .app-layout {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100dvh;
   max-width: 600px;
   margin: 0 auto;
   position: relative;
+  overflow: hidden;
 }
 
 /* Header */
@@ -212,7 +213,11 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px 16px 100px;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.app-main::-webkit-scrollbar { display: none; }
 
 /* Bottom Nav */
 .app-nav {

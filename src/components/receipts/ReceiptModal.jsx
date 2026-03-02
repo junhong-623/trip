@@ -61,9 +61,16 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
   const updateItemEaters = useCallback((id, eaters) => { setItems(prev => prev.map(i => i.id === id ? { ...i, eaters } : i)); }, []);
 
   const toggleParticipant = (pid) => {
+    if (isExisting) return;
     set("participants", form.participants.includes(pid)
       ? form.participants.filter(i => i !== pid)
       : [...form.participants, pid]);
+  };
+
+  const allSelected = people.length > 0 && people.every(p => form.participants.includes(p.id));
+  const toggleAll = () => {
+    if (isExisting) return;
+    set("participants", allSelected ? [] : people.map(p => p.id));
   };
 
   const handleOCRUpload = async (e) => {
@@ -261,13 +268,20 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             {items.length === 0 && (
               <div className="form-section">
                 <div className="section-title">{tr.splitAmong}</div>
+                {isExisting && <div className="form-hint" style={{marginBottom:8}}>账单已建立，分摊不可更改</div>}
                 <div className="participants-row">
-                  <button type="button" className="chip"
-                    style={{ background: "var(--terracotta-pale)", color: "var(--terracotta)" }}
-                    onClick={() => set("participants", people.map(p => p.id))}>{tr.all}</button>
+                  <button type="button"
+                    className={`chip ${allSelected ? "selected" : ""}`}
+                    style={allSelected
+                      ? { background: "var(--terracotta)", color: "white" }
+                      : { background: "var(--terracotta-pale)", color: "var(--terracotta)" }}
+                    disabled={isExisting}
+                    onClick={toggleAll}>{tr.all}</button>
                   {people.map(p => (
                     <button key={p.id} type="button"
                       className={`chip ${form.participants.includes(p.id) ? "selected" : ""}`}
+                      disabled={isExisting}
+                      style={isExisting ? { opacity: form.participants.includes(p.id) ? 1 : 0.4, cursor: "not-allowed" } : {}}
                       onClick={() => toggleParticipant(p.id)}>
                       <img src={p.avatarUrl || dicebearUrl(p.name)} alt={p.name}
                         style={{ width: 16, height: 16, borderRadius: "50%" }} />
