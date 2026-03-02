@@ -25,12 +25,31 @@ export default function GalleryPage({ toast }) {
   const { tr, t } = useLang();
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [lightbox, setLightbox] = useState(null);
+  const [lightboxIdx, setLightboxIdx] = useState(null); // index into photos array
   const [showModal, setShowModal] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
   const [pendingPreview, setPendingPreview] = useState(null);
   const [pendingIsVideo, setPendingIsVideo] = useState(false);
   const [photoForm, setPhotoForm] = useState({ note: "", googleMapLink: "", lat: "", lng: "" });
+
+  const lightbox = lightboxIdx !== null ? photos[lightboxIdx] : null;
+
+  const openLightbox = (idx) => setLightboxIdx(idx);
+  const closeLightbox = () => setLightboxIdx(null);
+  const goPrev = (e) => { e?.stopPropagation(); setLightboxIdx(i => (i - 1 + photos.length) % photos.length); };
+  const goNext = (e) => { e?.stopPropagation(); setLightboxIdx(i => (i + 1) % photos.length); };
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (lightboxIdx === null) return;
+    const handler = (e) => {
+      if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
+      else if (e.key === "Escape") closeLightbox();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightboxIdx, photos.length]);
 
   useEffect(() => {
     if (!activeTrip?.id) return;
@@ -125,7 +144,7 @@ export default function GalleryPage({ toast }) {
       if (photo.fileId) await deleteFromDrive(photo.fileId);
       await deletePhoto(activeTrip.id, photo.id);
       toast.show(tr.photoDeleted);
-      if (lightbox?.id === photo.id) setLightbox(null);
+      closeLightbox();
     } catch (e) {
       toast.show(e.message, "error");
     }
@@ -174,37 +193,26 @@ export default function GalleryPage({ toast }) {
         </div>
       ) : (
         <div className="photo-grid">
-          {photos.map(photo => {
+          {photos.map((photo, idx) => {
             const itemIsVideo = photo.isVideo || isVideoUrl(photo.imageUrl);
             return (
-              <div key={photo.id} className="photo-item" onClick={() => setLightbox(photo)}>
+              <div key={photo.id} className="photo-item" onClick={() => openLightbox(idx)}>
                 {itemIsVideo ? (
                   <div className="video-thumb">
                     <img
                       src={getVideoThumbnail(photo.imageUrl) || photo.imageUrl}
                       alt={photo.note || "video"}
                       className="photo-thumb"
-                      onError={e => { e.target.style.display="none"; }}
+                      onError={e => { e.target.style.display = "none"; }}
                     />
                     <div className="video-play-badge">▶</div>
                   </div>
                 ) : (
                   <img src={photo.imageUrl} alt={photo.note || "photo"} className="photo-thumb" />
                 )}
-                <div className="photo-overlay">
-                  <div className="photo-overlay-actions">
-                    {photo.googleMapLink && (
-                      <a href={photo.googleMapLink} target="_blank" rel="noopener"
-                        className="btn btn-icon" style={{ background: "rgba(255,255,255,0.9)" }}
-                        onClick={e => e.stopPropagation()}>📍</a>
-                    )}
-                    <button className="btn btn-icon" style={{ background: "rgba(255,255,255,0.9)" }}
-                      onClick={e => { e.stopPropagation(); handleDownload(photo); }}>⬇</button>
-                    <button className="btn btn-icon" style={{ background: "rgba(255,255,255,0.9)" }}
-                      onClick={e => { e.stopPropagation(); handleDelete(photo); }}>🗑</button>
-                  </div>
-                  {photo.note && <div className="photo-note">{photo.note}</div>}
-                </div>
+                {photo.note && (
+                  <div className="photo-note-overlay">{photo.note}</div>
+                )}
               </div>
             );
           })}
@@ -215,36 +223,70 @@ export default function GalleryPage({ toast }) {
       {lightbox && (() => {
         const lbIsVideo = lightbox.isVideo || isVideoUrl(lightbox.imageUrl);
         return (
-          <div className="lightbox" onClick={() => setLightbox(null)}>
-            <button className="lightbox-close">✕</button>
-            {lbIsVideo ? (
-              <video
-                src={lightbox.imageUrl}
-                className="lightbox-img"
-                controls
-                autoPlay
-                onClick={e => e.stopPropagation()}
-                style={{ maxHeight: "70vh", maxWidth: "100%", borderRadius: 12 }}
-              />
-            ) : (
-              <img src={lightbox.imageUrl} alt="" className="lightbox-img"
-                onClick={e => e.stopPropagation()} />
-            )}
-            <div className="lightbox-info" onClick={e => e.stopPropagation()}>
-              {lightbox.note && <div className="lightbox-note">{lightbox.note}</div>}
-              <div className="lightbox-meta">
-                {formatDateShort(lightbox.createdAt)}
+          <div className="lightbox" onClick={closeLightbox}>
+
+            {/* Top bar */}
+            <div className="lightbox-topbar" onClick={e => e.stopPropagation()}>
+              <span className="lightbox-counter">{lightboxIdx + 1} / {photos.length}</span>
+              <div className="lightbox-topbar-actions">
                 {lightbox.googleMapLink && (
-                  <a href={lightbox.googleMapLink} target="_blank" rel="noopener" className="lightbox-map">
-                    {tr.viewOnMap}
-                  </a>
+                  <a href={lightbox.googleMapLink} target="_blank" rel="noopener"
+                    className="lightbox-action-btn">📍</a>
                 )}
-                <button className="btn btn-icon" style={{ background: "rgba(255,255,255,0.15)", color: "#fff", marginLeft: 8 }}
-                  onClick={() => handleDownload(lightbox)}>
-                  {lightbox.isVideo || isVideoUrl(lightbox.imageUrl) ? "⬇" : "⬇"}
-                </button>
+                <button className="lightbox-action-btn" onClick={() => handleDownload(lightbox)}>⬇</button>
+                <button className="lightbox-action-btn" onClick={() => handleDelete(lightbox)}>🗑</button>
+                <button className="lightbox-action-btn lightbox-close-btn" onClick={closeLightbox}>✕</button>
               </div>
             </div>
+
+            {/* Main media */}
+            <div className="lightbox-media-wrap" onClick={e => e.stopPropagation()}>
+              {photos.length > 1 && (
+                <button className="lightbox-nav lightbox-prev" onClick={goPrev}>‹</button>
+              )}
+              {lbIsVideo ? (
+                <video
+                  key={lightbox.id}
+                  src={lightbox.imageUrl}
+                  className="lightbox-img"
+                  controls autoPlay
+                />
+              ) : (
+                <img key={lightbox.id} src={lightbox.imageUrl} alt="" className="lightbox-img" />
+              )}
+              {photos.length > 1 && (
+                <button className="lightbox-nav lightbox-next" onClick={goNext}>›</button>
+              )}
+            </div>
+
+            {/* Note */}
+            {lightbox.note && (
+              <div className="lightbox-note" onClick={e => e.stopPropagation()}>
+                {lightbox.note}
+              </div>
+            )}
+
+            {/* Thumbnail strip */}
+            {photos.length > 1 && (
+              <div className="lightbox-thumbstrip" onClick={e => e.stopPropagation()}>
+                {photos.map((p, idx) => {
+                  const isVid = p.isVideo || isVideoUrl(p.imageUrl);
+                  return (
+                    <div
+                      key={p.id}
+                      className={`lightbox-thumb ${idx === lightboxIdx ? "active" : ""}`}
+                      onClick={() => setLightboxIdx(idx)}
+                    >
+                      <img
+                        src={isVid ? (getVideoThumbnail(p.imageUrl) || p.imageUrl) : p.imageUrl}
+                        alt=""
+                      />
+                      {isVid && <div className="thumb-play">▶</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })()}
