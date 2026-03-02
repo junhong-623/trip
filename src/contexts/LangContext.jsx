@@ -9,7 +9,7 @@ export const LANGUAGES = [
 export const T = {
   en: {
     // App
-    appName: "Wandersplit",
+    appName: "TripMate",
     appSubtitle: "Travel expenses, beautifully tracked",
     // Auth
     email: "Email",
@@ -180,7 +180,7 @@ export const T = {
     driveFolder: "Drive Folder",
     notSet: "Not set",
     about: "About",
-    aboutText: "Wandersplit — Travel Expense Tracker\nBuilt with React + Firebase + Google Drive API",
+    aboutText: "TripMate — Travel Expense Tracker\nBuilt with React + Firebase + Google Drive API",
     language: "Language",
     // No trip
     noTripSelected: "No trip selected",
@@ -190,8 +190,8 @@ export const T = {
   },
 
   zh: {
-    appName: "Wandersplit",
-    appSubtitle: "旅行账单，轻松记录",
+    appName: "旅伴",
+    appSubtitle: "旅伴 — 旅行账单，轻松记录",
     email: "电子邮件",
     username: "用户名",
     usernameOrEmail: "用户名或电子邮件",
@@ -353,7 +353,7 @@ export const T = {
     driveFolder: "Drive 文件夹",
     notSet: "未设置",
     about: "关于",
-    aboutText: "Wandersplit — 旅行分账记录\n基于 React + Firebase + Google Drive API",
+    aboutText: "TripMate 旅伴 — 旅行分账记录\n基于 React + Firebase + Google Drive API",
     language: "语言",
     noTripSelected: "未选择行程",
     selectTripFirst: "请先选择或创建一个行程。",
@@ -361,7 +361,7 @@ export const T = {
   },
 
   ms: {
-    appName: "Wandersplit",
+    appName: "TripMate",
     appSubtitle: "Perbelanjaan perjalanan, dicatat dengan indah",
     email: "E-mel",
     username: "Nama Pengguna",
@@ -524,7 +524,7 @@ export const T = {
     driveFolder: "Folder Drive",
     notSet: "Tidak ditetapkan",
     about: "Tentang",
-    aboutText: "Wandersplit — Penjejak Perbelanjaan Perjalanan\nDibina dengan React + Firebase + Google Drive API",
+    aboutText: "TripMate — Penjejak Perbelanjaan Perjalanan\nDibina dengan React + Firebase + Google Drive API",
     language: "Bahasa",
     noTripSelected: "Tiada perjalanan dipilih",
     selectTripFirst: "Sila pilih atau buat perjalanan dahulu.",

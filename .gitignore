@@ -2,3 +2,4 @@ server/node_modules/
 node_modules/
 service-account.json
 /server/key.json
+zip
