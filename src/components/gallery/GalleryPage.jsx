@@ -30,14 +30,26 @@ export default function GalleryPage({ toast }) {
   const [pendingFile, setPendingFile] = useState(null);
   const [pendingPreview, setPendingPreview] = useState(null);
   const [pendingIsVideo, setPendingIsVideo] = useState(false);
-  const [photoForm, setPhotoForm] = useState({ note: "", googleMapLink: "", lat: "", lng: "" });
+  const [photoForm, setPhotoForm] = useState({ note: "", googleMapLink: "", lat: "", lng: "", tags: "" });
+  const [activeTab, setActiveTab] = useState("all");
+  const [activeTag, setActiveTag] = useState("all");
 
-  const lightbox = lightboxIdx !== null ? photos[lightboxIdx] : null;
+  // Must be defined before lightbox/nav references
+  const allTagsList = [...new Set(photos.flatMap(p => p.tags || []))].sort();
+  const filteredPhotos = photos.filter(p => {
+    const isVid = p.isVideo || isVideoUrl(p.imageUrl);
+    if (activeTab === "photos" && isVid) return false;
+    if (activeTab === "videos" && !isVid) return false;
+    if (activeTag !== "all" && !(p.tags || []).includes(activeTag)) return false;
+    return true;
+  });
+
+  const lightbox = lightboxIdx !== null ? filteredPhotos[lightboxIdx] : null;
 
   const openLightbox = (idx) => setLightboxIdx(idx);
   const closeLightbox = () => setLightboxIdx(null);
-  const goPrev = (e) => { e?.stopPropagation(); setLightboxIdx(i => (i - 1 + photos.length) % photos.length); };
-  const goNext = (e) => { e?.stopPropagation(); setLightboxIdx(i => (i + 1) % photos.length); };
+  const goPrev = (e) => { e?.stopPropagation(); setLightboxIdx(i => (i - 1 + filteredPhotos.length) % filteredPhotos.length); };
+  const goNext = (e) => { e?.stopPropagation(); setLightboxIdx(i => (i + 1) % filteredPhotos.length); };
 
   // Keyboard navigation
   useEffect(() => {
@@ -49,7 +61,7 @@ export default function GalleryPage({ toast }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [lightboxIdx, photos.length]);
+  }, [lightboxIdx, filteredPhotos.length]);
 
   useEffect(() => {
     if (!activeTrip?.id) return;
@@ -103,13 +115,14 @@ export default function GalleryPage({ toast }) {
         googleMapLink: photoForm.googleMapLink,
         lat: photoForm.lat ? Number(photoForm.lat) : null,
         lng: photoForm.lng ? Number(photoForm.lng) : null,
+        tags: photoForm.tags ? photoForm.tags.split(/[,\s]+/).map(t => t.replace(/^#/, "").trim().toLowerCase()).filter(Boolean) : [],
       });
       toast.show(pendingIsVideo ? "Video uploaded!" : tr.photoUploaded, "success");
       setShowModal(false);
       setPendingFile(null);
       setPendingPreview(null);
       setPendingIsVideo(false);
-      setPhotoForm({ note: "", googleMapLink: "", lat: "", lng: "" });
+      setPhotoForm({ note: "", googleMapLink: "", lat: "", lng: "", tags: "" });
     } catch (err) {
       toast.show(t(tr.uploadFailed, err.message), "error");
     } finally {
@@ -181,7 +194,43 @@ export default function GalleryPage({ toast }) {
         </div>
       )}
 
-      {photos.length === 0 ? (
+      {/* Tabs */}
+      {photos.length > 0 && (
+        <div className="gallery-tabs">
+          {["all","photos","videos"].map(tab => (
+            <button key={tab}
+              className={`gallery-tab ${activeTab === tab ? "active" : ""}`}
+              onClick={() => { setActiveTab(tab); setLightboxIdx(null); }}>
+              {tab === "all" ? tr.tabAll : tab === "photos" ? tr.tabPhotos : tr.tabVideos}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Tag filter */}
+      {allTagsList.length > 0 && (
+        <div className="gallery-tagstrip">
+          <button
+            className={`gallery-tag-btn ${activeTag === "all" ? "active" : ""}`}
+            onClick={() => setActiveTag("all")}>
+            {tr.allTags}
+          </button>
+          {allTagsList.map(tag => (
+            <button key={tag}
+              className={`gallery-tag-btn ${activeTag === tag ? "active" : ""}`}
+              onClick={() => setActiveTag(tag)}>
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filteredPhotos.length === 0 && photos.length > 0 ? (
+        <div className="empty-state" style={{padding:"24px 0"}}>
+          <div className="empty-state-icon">🔍</div>
+          <div className="empty-state-title">No results</div>
+        </div>
+      ) : filteredPhotos.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">📸</div>
           <div className="empty-state-title">{tr.noPhotosYet}</div>
@@ -193,7 +242,7 @@ export default function GalleryPage({ toast }) {
         </div>
       ) : (
         <div className="photo-grid">
-          {photos.map((photo, idx) => {
+          {filteredPhotos.map((photo, idx) => {
             const itemIsVideo = photo.isVideo || isVideoUrl(photo.imageUrl);
             return (
               <div key={photo.id} className="photo-item" onClick={() => openLightbox(idx)}>
@@ -227,7 +276,7 @@ export default function GalleryPage({ toast }) {
 
             {/* Top bar */}
             <div className="lightbox-topbar" onClick={e => e.stopPropagation()}>
-              <span className="lightbox-counter">{lightboxIdx + 1} / {photos.length}</span>
+              <span className="lightbox-counter">{lightboxIdx + 1} / {filteredPhotos.length}</span>
               <div className="lightbox-topbar-actions">
                 {lightbox.googleMapLink && (
                   <a href={lightbox.googleMapLink} target="_blank" rel="noopener"
@@ -241,7 +290,7 @@ export default function GalleryPage({ toast }) {
 
             {/* Main media */}
             <div className="lightbox-media-wrap" onClick={e => e.stopPropagation()}>
-              {photos.length > 1 && (
+              {filteredPhotos.length > 1 && (
                 <button className="lightbox-nav lightbox-prev" onClick={goPrev}>‹</button>
               )}
               {lbIsVideo ? (
@@ -254,7 +303,7 @@ export default function GalleryPage({ toast }) {
               ) : (
                 <img key={lightbox.id} src={lightbox.imageUrl} alt="" className="lightbox-img" />
               )}
-              {photos.length > 1 && (
+              {filteredPhotos.length > 1 && (
                 <button className="lightbox-nav lightbox-next" onClick={goNext}>›</button>
               )}
             </div>
@@ -265,11 +314,18 @@ export default function GalleryPage({ toast }) {
                 {lightbox.note}
               </div>
             )}
+            {lightbox.tags?.length > 0 && (
+              <div className="lightbox-tags" onClick={e => e.stopPropagation()}>
+                {lightbox.tags.map(tag => (
+                  <span key={tag} className="lightbox-tag">#{tag}</span>
+                ))}
+              </div>
+            )}
 
             {/* Thumbnail strip */}
-            {photos.length > 1 && (
+            {filteredPhotos.length > 1 && (
               <div className="lightbox-thumbstrip" onClick={e => e.stopPropagation()}>
-                {photos.map((p, idx) => {
+                {filteredPhotos.map((p, idx) => {
                   const isVid = p.isVideo || isVideoUrl(p.imageUrl);
                   return (
                     <div
@@ -332,6 +388,12 @@ export default function GalleryPage({ toast }) {
                 <input className="form-input" value={photoForm.googleMapLink}
                   onChange={e => setPhotoForm(f => ({ ...f, googleMapLink: e.target.value }))}
                   placeholder="https://maps.google.com/..." />
+              </div>
+              <div className="form-group">
+                <label className="form-label"># Tags</label>
+                <input className="form-input" value={photoForm.tags}
+                  onChange={e => setPhotoForm(f => ({ ...f, tags: e.target.value }))}
+                  placeholder={tr.tagPlaceholder || "beach, food, night"} />
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowModal(false)}>

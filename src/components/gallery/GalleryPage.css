@@ -169,3 +169,71 @@
   margin-bottom: 14px;
   text-align: center;
 }
+
+/* ── Tabs ─────────────────────────────── */
+.gallery-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.gallery-tab {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--sand-deep);
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gallery-tab.active {
+  background: var(--terracotta, #c97b4b);
+  border-color: var(--terracotta, #c97b4b);
+  color: white;
+}
+
+/* ── Tag filter strip ─────────────────── */
+.gallery-tagstrip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 4px;
+}
+.gallery-tagstrip::-webkit-scrollbar { display: none; }
+.gallery-tag-btn {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--sand-deep);
+  background: white;
+  font-size: 12px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.gallery-tag-btn.active {
+  background: var(--ink, #2d2013);
+  border-color: var(--ink, #2d2013);
+  color: white;
+}
+
+/* ── Lightbox tags ───────────────────── */
+.lightbox-tags {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 0 20px 4px;
+}
+.lightbox-tag {
+  font-size: 11px;
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.75);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
