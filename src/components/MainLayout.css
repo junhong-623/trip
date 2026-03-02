@@ -30,6 +30,13 @@
   flex-shrink: 0;
 }
 .app-brand-icon { font-size: 20px; }
+.app-brand-icon-img {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
 .app-brand-name {
   font-family: var(--font-display);
   font-size: 17px;

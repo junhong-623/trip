@@ -32,7 +32,7 @@ export default function ReceiptsPage({ toast }) {
 
   if (!activeTrip) return (
     <div className="empty-state">
-      <div className="empty-state-icon">✈️</div>
+      <div className="empty-state-icon"><img src="/trip/icons/icon-192.png" alt="MateTrip" style={{width:64,height:64,borderRadius:16,opacity:0.85}} /></div>
       <div className="empty-state-title">{tr.noTripSelected}</div>
     </div>
   );

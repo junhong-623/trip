@@ -12,8 +12,15 @@ function AppContent() {
   if (loading) {
     return (
       <div className="loading-screen">
-        <div className="loading-logo">✈</div>
-        <div className="loading-spinner" />
+        <div className="splash-logo-wrap">
+          <img src="/trip/icons/icon-192.png" alt="MateTrip" className="splash-logo" />
+        </div>
+        <div className="splash-name">
+          <span className="splash-name-en">MateTrip</span>
+          <span className="splash-name-zh">伴·旅</span>
+        </div>
+        <div className="splash-slogan">不是分账工具，是一起旅行的记忆。</div>
+        <div className="loading-spinner" style={{marginTop:24}} />
       </div>
     );
   }

@@ -58,7 +58,7 @@ export default function MainLayout() {
             onClick={() => setTab("trips")}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
-            <span className="app-brand-icon">✈</span>
+            <img src="/trip/icons/icon-192.png" alt="" className="app-brand-icon-img" />
             <span className="app-brand-name">{tr.appName}</span>
           </button>
 

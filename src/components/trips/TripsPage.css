@@ -99,3 +99,63 @@
 .trip-join-code:hover {
   background: var(--sand-dark);
 }
+
+/* Member count clickable */
+.trip-member-count.clickable {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+/* Members modal rows */
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--sand-dark);
+}
+.member-row:last-child { border-bottom: none; }
+
+.member-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--terracotta-pale);
+  color: var(--terracotta);
+  font-weight: 700;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.member-avatar-joined {
+  background: #e8f4f0;
+  color: #2a8a6a;
+}
+.member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.member-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.member-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  width: fit-content;
+}
+.member-badge.owner {
+  background: var(--terracotta-pale);
+  color: var(--terracotta);
+}
+.member-badge.joined {
+  background: #e8f4f0;
+  color: #2a8a6a;
+}

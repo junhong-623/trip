@@ -59,15 +59,49 @@ body {
   align-items: center;
   justify-content: center;
   background: var(--sand);
-  gap: 20px;
+  gap: 8px;
 }
-.loading-logo {
-  font-size: 48px;
-  animation: float 2s ease-in-out infinite;
+.splash-logo-wrap {
+  margin-bottom: 8px;
+  animation: splashPop 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
 }
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(-10deg); }
-  50% { transform: translateY(-12px) rotate(10deg); }
+.splash-logo {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+@keyframes splashPop {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.splash-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  animation: fadeUp 0.5s 0.2s both ease-out;
+}
+.splash-name-en {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+}
+.splash-name-zh {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--terracotta);
+}
+.splash-slogan {
+  font-size: 13px;
+  color: var(--ink-muted);
+  animation: fadeUp 0.5s 0.35s both ease-out;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .loading-spinner {
   width: 32px; height: 32px;
@@ -282,7 +316,7 @@ body {
   padding: 48px 24px;
   color: var(--ink-muted);
 }
-.empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state-icon { font-size: 48px; margin-bottom: 12px; display:flex; align-items:center; justify-content:center; }
 .empty-state-title {
   font-family: var(--font-display);
   font-size: 18px;
