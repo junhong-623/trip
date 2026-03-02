@@ -205,11 +205,11 @@ export const T = {
     driveFolder: "Drive Folder",
     notSet: "Not set",
     about: "About",
-    aboutText: "TripMate — Travel Expense Tracker\nBuilt with React + Firebase + Google Drive API",
+    aboutText: "MateTrip — Travel Expense Tracker\nBuilt with React + Firebase + Google Drive API",
 
     // Install PWA
     installApp: "Add to Home Screen",
-    installAppDesc: "Install TripMate on your phone for quick access — works like a native app.",
+    installAppDesc: "Install MateTrip on your phone for quick access — works like a native app.",
     installIOS: "On iPhone / iPad",
     installIOSSteps: "1. Open in Safari\n2. Tap the Share button (□↑) at the bottom\n3. Scroll down and tap \"Add to Home Screen\"\n4. Tap \"Add\" to confirm",
     installAndroid: "On Android",
@@ -411,7 +411,7 @@ export const T = {
     driveFolder: "Drive 文件夹",
     notSet: "未设置",
     about: "关于",
-    aboutText: "TripMate 旅伴 — 旅行分账记录\n基于 React + Firebase + Google Drive API",
+    aboutText: "MateTrip 伴旅 — 算清一路琐碎，存下全程风景。\n基于 React + Firebase + Google Drive API",
 
     // 安装 PWA
     installApp: "添加到主屏幕",
@@ -615,11 +615,11 @@ export const T = {
     driveFolder: "Folder Drive",
     notSet: "Tidak ditetapkan",
     about: "Tentang",
-    aboutText: "TripMate — Penjejak Perbelanjaan Perjalanan\nDibina dengan React + Firebase + Google Drive API",
+    aboutText: "MateTrip — Penjejak Perbelanjaan Perjalanan\nDibina dengan React + Firebase + Google Drive API",
 
     // Pasang PWA
     installApp: "Tambah ke Skrin Utama",
-    installAppDesc: "Pasang TripMate di telefon anda untuk akses pantas — berfungsi seperti aplikasi asli.",
+    installAppDesc: "Pasang MateTrip di telefon anda untuk akses pantas — berfungsi seperti aplikasi asli.",
     installIOS: "iPhone / iPad",
     installIOSSteps: "1. Buka dalam Safari\n2. Ketik butang Kongsi (□↑) di bawah\n3. Tatal ke bawah dan ketik \"Tambah ke Skrin Utama\"\n4. Ketik \"Tambah\" untuk mengesahkan",
     installAndroid: "Android",

@@ -1,6 +1,6 @@
 {
-  "name": "TripMate",
-  "short_name": "TripMate",
+  "name": "MateTrip",
+  "short_name": "伴旅",
   "description": "Travel expenses, beautifully tracked",
   "start_url": "/trip/",
   "scope": "/trip/",
