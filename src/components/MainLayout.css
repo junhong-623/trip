@@ -50,6 +50,8 @@
   font-weight: 700;
   color: var(--ink);
   line-height: 1.2;
+  text-align: left;
+  margin-bottom: 5px;
 }
 .app-brand-slogan {
   font-size: 10px;
