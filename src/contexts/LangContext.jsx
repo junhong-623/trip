@@ -206,7 +206,7 @@ export const T = {
     driveFolder: "Drive Folder",
     notSet: "Not set",
     about: "About",
-    aboutText: "MateTrip — Travel Expense Tracker\nBuilt with React + Firebase + Google Drive API",
+    aboutText: "Built with React + Firebase + Cloudinary Drive API + Railway Backend",
 
     // Install PWA
     installApp: "Add to Home Screen",
@@ -413,7 +413,7 @@ export const T = {
     driveFolder: "Drive 文件夹",
     notSet: "未设置",
     about: "关于",
-    aboutText: "MateTrip 伴旅 — 算清一路琐碎，存下全程风景。\n基于 React + Firebase + Google Drive API",
+    aboutText: "基于 React + Firebase + Cloudinary Drive API + Railway Backend",
 
     // 安装 PWA
     installApp: "添加到主屏幕",
@@ -618,7 +618,7 @@ export const T = {
     driveFolder: "Folder Drive",
     notSet: "Tidak ditetapkan",
     about: "Tentang",
-    aboutText: "MateTrip — Penjejak Perbelanjaan Perjalanan\nDibina dengan React + Firebase + Google Drive API",
+    aboutText: "Dibina dengan React + Firebase + Cloudinary Drive API + Railway Backend",
 
     // Pasang PWA
     installApp: "Tambah ke Skrin Utama",

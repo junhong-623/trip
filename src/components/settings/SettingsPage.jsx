@@ -241,8 +241,20 @@ export default function SettingsPage({ toast }) {
 
       {/* About */}
       <div className="card">
-        <div className="section-title" style={{marginBottom:8}}>{tr.about}</div>
-        <p style={{fontSize:13,color:"var(--ink-muted)",lineHeight:1.6,whiteSpace:"pre-line"}}>
+        <div className="section-title" style={{marginBottom:12}}>{tr.about}</div>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,marginBottom:14}}>
+          <img src="/trip/icons/icon-192.png" alt="MateTrip"
+            style={{width:64,height:64,borderRadius:16,boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}} />
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"var(--font-display)",fontSize:18,fontWeight:800,color:"var(--ink)"}}>
+              MateTrip <span style={{color:"var(--terracotta)"}}>伴旅</span>
+            </div>
+            <div style={{fontSize:14,color:"var(--ink-muted)",marginTop:2}}>
+              算清一路琐碎，存下全程风景。
+            </div>
+          </div>
+        </div>
+        <p style={{fontSize:12,color:"var(--ink-muted)",lineHeight:1.7,whiteSpace:"pre-line",textAlign:"center"}}>
           {tr.aboutText}
         </p>
       </div>

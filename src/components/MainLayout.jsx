@@ -127,7 +127,9 @@ export default function MainLayout() {
           <button key={n.id}
             className={`nav-item ${tab === n.id ? "active" : ""}`}
             onClick={() => setTab(n.id)}>
-            <span className="nav-icon">{n.icon}</span>
+            <span className="nav-icon-bg">
+              <span className="nav-icon">{n.icon}</span>
+            </span>
             <span className="nav-label">{n.label}</span>
           </button>
         ))}
