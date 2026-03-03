@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useViewport } from "./hooks/useViewport";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TripProvider } from "./contexts/TripContext";
 import { LangProvider } from "./contexts/LangContext";
@@ -8,6 +9,7 @@ import "./App.css";
 
 function AppContent() {
   const { user, loading } = useAuth();
+  useViewport();
 
   if (loading) {
     return (
@@ -17,9 +19,9 @@ function AppContent() {
         </div>
         <div className="splash-name">
           <span className="splash-name-en">MateTrip</span>
-          <span className="splash-name-zh">伴·旅</span>
+          <span className="splash-name-zh">伴旅</span>
         </div>
-        <div className="splash-slogan">算清一路琐碎，存下全程风景。</div>
+        <div className="splash-slogan">不是分账工具，是一起旅行的记忆。</div>
         <div className="loading-spinner" style={{marginTop:24}} />
       </div>
     );

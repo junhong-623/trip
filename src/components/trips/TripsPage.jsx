@@ -340,6 +340,7 @@ export default function TripsPage({ toast, onNavigate }) {
                   maxLength={6}
                   autoFocus
                   style={{letterSpacing:"0.2em",fontWeight:600,fontSize:18,textAlign:"center"}}
+                  onFocus={e => setTimeout(() => e.target.scrollIntoView({ behavior: "smooth", block: "center" }), 300)}
                   onKeyDown={e => e.key === "Enter" && handleJoin()}
                 />
               </div>

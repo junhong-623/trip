@@ -209,8 +209,12 @@ body {
 
 /* Modal */
 .modal-overlay {
+  /* Use visualViewport dimensions so keyboard doesn't bury the modal */
   position: fixed;
-  inset: 0;
+  top: var(--viewport-offset-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--viewport-height, 100dvh);
   background: rgba(26,22,18,0.5);
   backdrop-filter: blur(4px);
   display: flex;
@@ -227,7 +231,8 @@ body {
   padding: 24px;
   width: 100%;
   max-width: 540px;
-  max-height: 90vh;
+  /* Cap at 90% of the *visible* viewport height */
+  max-height: calc(var(--viewport-height, 100dvh) * 0.92);
   overflow-y: auto;
   animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
