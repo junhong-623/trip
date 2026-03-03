@@ -309,3 +309,11 @@
   margin-bottom: 10px;
   flex-shrink: 0;
 }
+
+/* Fix date/time inputs on mobile */
+.plan-page .form-input[type="date"],
+.plan-page .form-input[type="time"] {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}

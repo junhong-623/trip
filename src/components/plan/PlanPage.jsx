@@ -176,9 +176,14 @@ export default function PlanPage({ toast }) {
   const { user } = useAuth();
   const { tr } = useLang();
   const [activeTab, setActiveTab] = useState("schedule");
-  const markRead = () => activeTrip?.id && setLastRead(activeTrip.id);
+  const markRead = () => {
+    if (!activeTrip?.id) return;
+    setLastRead(activeTrip.id);
+    setLastReadTime(Date.now());
+  };
   const [events, setEvents] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [lastReadTime, setLastReadTime] = useState(() => getLastRead(activeTrip?.id || ""));
   const [showEventModal, setShowEventModal] = useState(false);
   const [editEvent, setEditEvent] = useState(null);
   const [msgText, setMsgText] = useState("");
@@ -302,9 +307,15 @@ export default function PlanPage({ toast }) {
         <button className={`plan-tab ${activeTab === "chat" ? "active" : ""}`}
           onClick={() => { setActiveTab("chat"); markRead(); }}>
           💬 {tr.chat}
-          {messages.length > 0 && activeTab !== "chat" && (
-            <span className="chat-badge">{messages.length}</span>
-          )}
+          {(() => {
+            const unread = messages.filter(m => {
+              const t = m.createdAt?.toMillis?.() || (m.createdAt?.seconds * 1000) || 0;
+              return m.uid !== user?.uid && t > lastReadTime;
+            }).length;
+            return unread > 0 && activeTab !== "chat"
+              ? <span className="chat-badge">{unread}</span>
+              : null;
+          })()}
         </button>
       </div>
 
