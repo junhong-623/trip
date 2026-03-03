@@ -8,6 +8,7 @@ const cors = require("cors");
 const { google } = require("googleapis");
 const { ImageAnnotatorClient } = require("@google-cloud/vision");
 const cloudinary = require("cloudinary").v2;
+const webpush = require("web-push");
 const path = require("path");
 
 const app = express();
@@ -33,6 +34,19 @@ cloudinary.config({
   api_key:    process.env.CLOUDINARY_API_KEY    || "421469929622667",
   api_secret: process.env.CLOUDINARY_API_SECRET || "ImgKNZvnbCD5RFOKk3StMtxgtZo",
 });
+
+// ─── Web Push config ─────────────────────────────────────────────────────────
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL || "mailto:admin@matetrip.app",
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+// In-memory subscription store (fine for small scale)
+// Structure: { tripId: [ { userId, subscription } ] }
+const pushSubscriptions = {};
 
 // ─── Google Auth (Vision OCR only) ───────────────────────────────────────────
 function getAuth() {
@@ -302,6 +316,65 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
     console.error("Vision OCR error:", err);
     res.status(500).json({ message: err.message });
   }
+});
+
+// ─── POST /api/push/subscribe ────────────────────────────────────────────────
+app.post("/api/push/subscribe", (req, res) => {
+  const { subscription, tripId, userId } = req.body;
+  if (!subscription || !tripId || !userId) {
+    return res.status(400).json({ message: "Missing subscription, tripId or userId" });
+  }
+  if (!pushSubscriptions[tripId]) pushSubscriptions[tripId] = [];
+
+  // Replace existing subscription for this user
+  pushSubscriptions[tripId] = pushSubscriptions[tripId].filter(s => s.userId !== userId);
+  pushSubscriptions[tripId].push({ userId, subscription });
+
+  console.log(`Push subscription saved: trip=${tripId} user=${userId} total=${pushSubscriptions[tripId].length}`);
+  res.json({ success: true });
+});
+
+// ─── POST /api/push/send ─────────────────────────────────────────────────────
+app.post("/api/push/send", async (req, res) => {
+  const { tripId, senderUserId, senderName, message } = req.body;
+  if (!tripId || !message) {
+    return res.status(400).json({ message: "Missing tripId or message" });
+  }
+
+  const subs = (pushSubscriptions[tripId] || []).filter(s => s.userId !== senderUserId);
+  if (subs.length === 0) return res.json({ sent: 0 });
+
+  const payload = JSON.stringify({
+    title: senderName || "MateTrip",
+    body: message,
+    url: "/trip/",
+  });
+
+  let sent = 0;
+  const dead = [];
+
+  await Promise.allSettled(
+    subs.map(async ({ userId, subscription }) => {
+      try {
+        await webpush.sendNotification(subscription, payload);
+        sent++;
+      } catch (err) {
+        // 410 Gone = subscription expired, remove it
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          dead.push(userId);
+        }
+        console.warn(`Push failed for user ${userId}:`, err.statusCode || err.message);
+      }
+    })
+  );
+
+  // Clean up dead subscriptions
+  if (dead.length > 0) {
+    pushSubscriptions[tripId] = pushSubscriptions[tripId].filter(s => !dead.includes(s.userId));
+  }
+
+  console.log(`Push sent: trip=${tripId} sent=${sent}/${subs.length}`);
+  res.json({ sent, total: subs.length });
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────────

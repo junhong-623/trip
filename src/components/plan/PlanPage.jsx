@@ -7,6 +7,9 @@ import {
   subscribeMessages, addMessage, deleteMessage,
 } from "../../services/firestore";
 import "./PlanPage.css";
+import { registerSW, subscribePush, isPushSupported } from "../../services/pushService";
+
+const API = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
 
 // ─── Browser notifications ────────────────────────────────────────────────────
 async function requestNotifPermission() {
@@ -19,9 +22,15 @@ async function requestNotifPermission() {
 
 function sendNotif(title, body, icon = "/trip/icons/icon-192.png") {
   if (Notification.permission !== "granted") return;
-  try {
-    new Notification(title, { body, icon, badge: icon });
-  } catch {}
+  try { new Notification(title, { body, icon, badge: icon }); } catch {}
+}
+
+// Per-trip last-read timestamp stored in localStorage
+function getLastRead(tripId) {
+  try { return parseInt(localStorage.getItem(`lastread_${tripId}`) || "0", 10); } catch { return 0; }
+}
+function setLastRead(tripId) {
+  try { localStorage.setItem(`lastread_${tripId}`, Date.now().toString()); } catch {}
 }
 
 // ─── ICS calendar export ───────────────────────────────────────────────────────
@@ -167,6 +176,7 @@ export default function PlanPage({ toast }) {
   const { user } = useAuth();
   const { tr } = useLang();
   const [activeTab, setActiveTab] = useState("schedule");
+  const markRead = () => activeTrip?.id && setLastRead(activeTrip.id);
   const [events, setEvents] = useState([]);
   const [messages, setMessages] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -174,27 +184,34 @@ export default function PlanPage({ toast }) {
   const [msgText, setMsgText] = useState("");
   const [sending, setSending] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(Notification?.permission === "granted");
+  const [pushEnabled, setPushEnabled] = useState(false);
   const msgEndRef = useRef(null);
   const inputRef = useRef(null);
-  const prevMsgCount = useRef(0);
-  const isVisibleRef = useRef(true);
+  const initializedRef = useRef(false);
+
+  useEffect(() => { registerSW(); }, []);
 
   useEffect(() => {
     if (!activeTrip?.id) return;
     const u1 = subscribeSchedule(activeTrip.id, setEvents);
+    const lastRead = getLastRead(activeTrip.id);
     const u2 = subscribeMessages(activeTrip.id, msgs => {
-      setMessages(prev => {
-        // Notify on new messages from others when chat tab not active
-        if (msgs.length > prevMsgCount.current) {
-          const newMsgs = msgs.slice(prevMsgCount.current);
-          newMsgs.forEach(m => {
-            if (m.uid !== user?.uid && (activeTab !== "chat" || document.hidden)) {
-              sendNotif(m.displayName || "MateTrip", m.text);
-            }
-          });
+      setMessages(msgs);
+      if (!initializedRef.current) {
+        // First load — mark everything as read, don't notify
+        initializedRef.current = true;
+        return;
+      }
+      // Only notify about messages newer than lastRead and not from me
+      msgs.forEach(m => {
+        const msgTime = m.createdAt?.toMillis?.() || m.createdAt?.seconds * 1000 || 0;
+        if (
+          m.uid !== user?.uid &&
+          msgTime > lastRead &&
+          (activeTab !== "chat" || document.hidden)
+        ) {
+          sendNotif(m.displayName || "MateTrip", m.text);
         }
-        prevMsgCount.current = msgs.length;
-        return msgs;
       });
     });
     return () => { u1(); u2(); };
@@ -202,8 +219,10 @@ export default function PlanPage({ toast }) {
 
   // Auto-scroll chat to bottom
   useEffect(() => {
-    if (activeTab === "chat")
+    if (activeTab === "chat") {
       msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      markRead();
+    }
   }, [messages, activeTab]);
 
   const handleSaveEvent = async (form) => {
@@ -233,12 +252,24 @@ export default function PlanPage({ toast }) {
     if (!text || sending) return;
     setSending(true);
     setMsgText("");
+    const displayName = user.displayName || user.email || "User";
     try {
       await addMessage(activeTrip.id, {
         text,
         uid: user.uid,
-        displayName: user.displayName || user.email || "User",
+        displayName,
       });
+      // Trigger push to other members
+      fetch(`${API}/api/push/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tripId: activeTrip.id,
+          senderUserId: user.uid,
+          senderName: displayName,
+          message: text,
+        }),
+      }).catch(() => {}); // fire and forget
     } catch (e) { toast.show(e.message, "error"); }
     finally { setSending(false); }
   };
@@ -269,7 +300,7 @@ export default function PlanPage({ toast }) {
           📅 {tr.schedule}
         </button>
         <button className={`plan-tab ${activeTab === "chat" ? "active" : ""}`}
-          onClick={() => setActiveTab("chat")}>
+          onClick={() => { setActiveTab("chat"); markRead(); }}>
           💬 {tr.chat}
           {messages.length > 0 && activeTab !== "chat" && (
             <span className="chat-badge">{messages.length}</span>
@@ -356,8 +387,16 @@ export default function PlanPage({ toast }) {
               <button className="btn btn-sm btn-secondary" onClick={async () => {
                 const ok = await requestNotifPermission();
                 setNotifEnabled(ok);
-                if (ok) toast.show("通知已开启 ✓", "success");
-                else toast.show("请在系统设置中允许通知", "error");
+                if (ok) {
+                  toast.show("通知已开启 ✓", "success");
+                  // Also subscribe to push for background notifications
+                  if (isPushSupported()) {
+                    const sub = await subscribePush(activeTrip.id, user.uid);
+                    if (sub) setPushEnabled(true);
+                  }
+                } else {
+                  toast.show("请在系统设置中允许通知", "error");
+                }
               }}>开启</button>
             </div>
           )}
