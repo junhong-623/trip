@@ -9,6 +9,7 @@ const { google } = require("googleapis");
 const { ImageAnnotatorClient } = require("@google-cloud/vision");
 const cloudinary = require("cloudinary").v2;
 const webpush = require("web-push");
+const admin = require("firebase-admin");
 const path = require("path");
 
 const app = express();
@@ -44,9 +45,25 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   );
 }
 
-// In-memory subscription store (fine for small scale)
-// Structure: { tripId: [ { userId, subscription } ] }
-const pushSubscriptions = {};
+// ─── Firebase Admin init ─────────────────────────────────────────────────────
+let db = null;
+try {
+  const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
+  let credential;
+  if (keyJson) {
+    credential = admin.credential.cert(JSON.parse(keyJson));
+  } else if (keyPath) {
+    credential = admin.credential.cert(require("path").resolve(keyPath));
+  }
+  if (credential && !admin.apps.length) {
+    admin.initializeApp({ credential });
+    db = admin.firestore();
+    console.log("Firebase Admin initialized");
+  }
+} catch (e) {
+  console.warn("Firebase Admin init failed:", e.message);
+}
 
 // ─── Google Auth (Vision OCR only) ───────────────────────────────────────────
 function getAuth() {
@@ -319,19 +336,26 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
 });
 
 // ─── POST /api/push/subscribe ────────────────────────────────────────────────
-app.post("/api/push/subscribe", (req, res) => {
+app.post("/api/push/subscribe", async (req, res) => {
   const { subscription, tripId, userId } = req.body;
   if (!subscription || !tripId || !userId) {
     return res.status(400).json({ message: "Missing subscription, tripId or userId" });
   }
-  if (!pushSubscriptions[tripId]) pushSubscriptions[tripId] = [];
-
-  // Replace existing subscription for this user
-  pushSubscriptions[tripId] = pushSubscriptions[tripId].filter(s => s.userId !== userId);
-  pushSubscriptions[tripId].push({ userId, subscription });
-
-  console.log(`Push subscription saved: trip=${tripId} user=${userId} total=${pushSubscriptions[tripId].length}`);
-  res.json({ success: true });
+  try {
+    if (db) {
+      // Save to Firestore — persists across Railway restarts
+      await db.collection("pushSubscriptions").doc(`${tripId}_${userId}`).set({
+        tripId, userId, subscription, updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`Push subscription saved to Firestore: trip=${tripId} user=${userId}`);
+    } else {
+      return res.status(500).json({ message: "Firestore not available" });
+    }
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Subscribe error:", e);
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // ─── POST /api/push/send ─────────────────────────────────────────────────────
@@ -340,41 +364,56 @@ app.post("/api/push/send", async (req, res) => {
   if (!tripId || !message) {
     return res.status(400).json({ message: "Missing tripId or message" });
   }
+  if (!db) return res.status(500).json({ message: "Firestore not available" });
 
-  const subs = (pushSubscriptions[tripId] || []).filter(s => s.userId !== senderUserId);
-  if (subs.length === 0) return res.json({ sent: 0 });
+  try {
+    // Load all subscriptions for this trip from Firestore
+    const snap = await db.collection("pushSubscriptions")
+      .where("tripId", "==", tripId)
+      .get();
 
-  const payload = JSON.stringify({
-    title: senderName || "MateTrip",
-    body: message,
-    url: "/trip/",
-  });
+    const subs = snap.docs
+      .map(d => d.data())
+      .filter(s => s.userId !== senderUserId);
 
-  let sent = 0;
-  const dead = [];
+    if (subs.length === 0) return res.json({ sent: 0 });
 
-  await Promise.allSettled(
-    subs.map(async ({ userId, subscription }) => {
-      try {
-        await webpush.sendNotification(subscription, payload);
-        sent++;
-      } catch (err) {
-        // 410 Gone = subscription expired, remove it
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          dead.push(userId);
+    const payload = JSON.stringify({
+      title: senderName || "MateTrip",
+      body: message,
+      url: "/trip/",
+    });
+
+    let sent = 0;
+    const deadDocs = [];
+
+    await Promise.allSettled(
+      subs.map(async ({ userId, subscription }) => {
+        try {
+          await webpush.sendNotification(subscription, payload);
+          sent++;
+        } catch (err) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            deadDocs.push(`${tripId}_${userId}`);
+          }
+          console.warn(`Push failed for user ${userId}:`, err.statusCode || err.message);
         }
-        console.warn(`Push failed for user ${userId}:`, err.statusCode || err.message);
-      }
-    })
-  );
+      })
+    );
 
-  // Clean up dead subscriptions
-  if (dead.length > 0) {
-    pushSubscriptions[tripId] = pushSubscriptions[tripId].filter(s => !dead.includes(s.userId));
+    // Clean up expired subscriptions from Firestore
+    if (deadDocs.length > 0) {
+      const batch = db.batch();
+      deadDocs.forEach(id => batch.delete(db.collection("pushSubscriptions").doc(id)));
+      await batch.commit();
+    }
+
+    console.log(`Push sent: trip=${tripId} sent=${sent}/${subs.length}`);
+    res.json({ sent, total: subs.length });
+  } catch (e) {
+    console.error("Send push error:", e);
+    res.status(500).json({ message: e.message });
   }
-
-  console.log(`Push sent: trip=${tripId} sent=${sent}/${subs.length}`);
-  res.json({ sent, total: subs.length });
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────────
