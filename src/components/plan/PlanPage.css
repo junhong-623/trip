@@ -49,13 +49,6 @@
 
 /* ── Schedule ─────────────────────────────────────────────────── */
 .schedule-content { flex: 1; }
-.schedule-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  gap: 12px;
-}
 .schedule-list { display: flex; flex-direction: column; gap: 20px; }
 
 .schedule-day {}
@@ -147,7 +140,6 @@
   min-height: 0;
   height: calc(var(--viewport-height, 100dvh) - 220px);
 }
-.chat-header { margin-bottom: 10px; flex-shrink: 0; }
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -275,3 +267,45 @@
   white-space: nowrap;
 }
 .chat-send-btn:disabled { opacity: 0.4; }
+
+/* Add event card at bottom of list */
+.event-add-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  border: 2px dashed var(--sand-dark);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+.event-add-card:hover, .event-add-card:active {
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+  background: var(--terracotta-pale);
+}
+.event-add-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* Notification banner */
+.notif-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--sand);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}

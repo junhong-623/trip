@@ -8,6 +8,22 @@ import {
 } from "../../services/firestore";
 import "./PlanPage.css";
 
+// ─── Browser notifications ────────────────────────────────────────────────────
+async function requestNotifPermission() {
+  if (!("Notification" in window)) return false;
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+  const result = await Notification.requestPermission();
+  return result === "granted";
+}
+
+function sendNotif(title, body, icon = "/trip/icons/icon-192.png") {
+  if (Notification.permission !== "granted") return;
+  try {
+    new Notification(title, { body, icon, badge: icon });
+  } catch {}
+}
+
 // ─── ICS calendar export ───────────────────────────────────────────────────────
 function downloadICS(event) {
   const pad = n => String(n).padStart(2, "0");
@@ -72,6 +88,7 @@ function EventModal({ event, onSave, onClose, onDelete, tr }) {
     time: event?.time || "",
     place: event?.place || "",
     notes: event?.notes || "",
+    mapLink: event?.mapLink || "",
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -98,17 +115,21 @@ function EventModal({ event, onSave, onClose, onDelete, tr }) {
               onChange={e => set("title", e.target.value)}
               placeholder="e.g. 富士山一日游" autoFocus />
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <div className="form-group">
-              <label className="form-label">{tr.eventDate} *</label>
-              <input className="form-input" type="date" value={form.date}
-                onChange={e => set("date", e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">{tr.eventTime}</label>
-              <input className="form-input" type="time" value={form.time}
-                onChange={e => set("time", e.target.value)} />
-            </div>
+          <div className="form-group">
+            <label className="form-label">{tr.eventDate} *</label>
+            <input className="form-input" type="date" value={form.date}
+              onChange={e => set("date", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">{tr.eventTime}</label>
+            <input className="form-input" type="time" value={form.time}
+              onChange={e => set("time", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">🗺 Google Maps</label>
+            <input className="form-input" value={form.mapLink}
+              onChange={e => set("mapLink", e.target.value)}
+              placeholder="https://maps.app.goo.gl/..." />
           </div>
           <div className="form-group">
             <label className="form-label">📍 {tr.eventPlace}</label>
@@ -152,15 +173,32 @@ export default function PlanPage({ toast }) {
   const [editEvent, setEditEvent] = useState(null);
   const [msgText, setMsgText] = useState("");
   const [sending, setSending] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(Notification?.permission === "granted");
   const msgEndRef = useRef(null);
   const inputRef = useRef(null);
+  const prevMsgCount = useRef(0);
+  const isVisibleRef = useRef(true);
 
   useEffect(() => {
     if (!activeTrip?.id) return;
     const u1 = subscribeSchedule(activeTrip.id, setEvents);
-    const u2 = subscribeMessages(activeTrip.id, setMessages);
+    const u2 = subscribeMessages(activeTrip.id, msgs => {
+      setMessages(prev => {
+        // Notify on new messages from others when chat tab not active
+        if (msgs.length > prevMsgCount.current) {
+          const newMsgs = msgs.slice(prevMsgCount.current);
+          newMsgs.forEach(m => {
+            if (m.uid !== user?.uid && (activeTab !== "chat" || document.hidden)) {
+              sendNotif(m.displayName || "MateTrip", m.text);
+            }
+          });
+        }
+        prevMsgCount.current = msgs.length;
+        return msgs;
+      });
+    });
     return () => { u1(); u2(); };
-  }, [activeTrip?.id]);
+  }, [activeTrip?.id, user?.uid, activeTab]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -242,16 +280,6 @@ export default function PlanPage({ toast }) {
       {/* ── Schedule Tab ── */}
       {activeTab === "schedule" && (
         <div className="schedule-content">
-          <div className="schedule-header">
-            <div>
-              <h1 className="page-title">{tr.schedule}</h1>
-              <p className="page-subtitle">{activeTrip.name}</p>
-            </div>
-            <button className="btn btn-primary" onClick={() => { setEditEvent(null); setShowEventModal(true); }}>
-              + {tr.addEvent}
-            </button>
-          </div>
-
           {events.length === 0 ? (
             <div className="empty-state" style={{paddingTop:40}}>
               <div className="empty-state-icon">📅</div>
@@ -288,15 +316,31 @@ export default function PlanPage({ toast }) {
                         {item.place && <div className="event-place">📍 {item.place}</div>}
                         {item.notes && <div className="event-notes">{item.notes}</div>}
                       </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
+                      {item.mapLink && (
+                        <a href={item.mapLink} target="_blank" rel="noopener noreferrer"
+                          className="event-cal-btn"
+                          onClick={e => e.stopPropagation()}
+                          title="Google Maps">
+                          🗺
+                        </a>
+                      )}
                       <button className="event-cal-btn"
                         onClick={e => { e.stopPropagation(); downloadICS(item); toast.show(tr.addToCalendar + " ✓", "success"); }}
                         title={tr.addToCalendar}>
                         📲
                       </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               ))}
+              {/* Add event card at bottom */}
+              <button className="event-add-card"
+                onClick={() => { setEditEvent(null); setShowEventModal(true); }}>
+                <span className="event-add-icon">＋</span>
+                <span>{tr.addEvent}</span>
+              </button>
             </div>
           )}
         </div>
@@ -305,11 +349,18 @@ export default function PlanPage({ toast }) {
       {/* ── Chat Tab ── */}
       {activeTab === "chat" && (
         <div className="chat-content">
-          <div className="chat-header">
-            <h1 className="page-title">{tr.chat}</h1>
-            <p className="page-subtitle">{activeTrip.name}</p>
-          </div>
-
+          {/* Notification permission banner */}
+          {!notifEnabled && Notification?.permission !== "denied" && (
+            <div className="notif-banner">
+              <span>🔔 开启通知，收到新消息时提醒你</span>
+              <button className="btn btn-sm btn-secondary" onClick={async () => {
+                const ok = await requestNotifPermission();
+                setNotifEnabled(ok);
+                if (ok) toast.show("通知已开启 ✓", "success");
+                else toast.show("请在系统设置中允许通知", "error");
+              }}>开启</button>
+            </div>
+          )}
           <div className="chat-messages">
             {messages.length === 0 ? (
               <div className="chat-empty">
