@@ -168,7 +168,7 @@ export default function SummaryPage({ toast }) {
         <div className="summary-total-amount">{formatAmount(totalSpend, currency)}</div>
         <div className="summary-total-sub">
           {t(tr.receiptsCount, receipts.length, people.length)}
-          {pendingCount > 0 && <span className="pending-badge"> · {pendingCount} pending</span>}
+          {pendingCount > 0 && <span className="pending-badge"> · {pendingCount} {tr.pending}</span>}
         </div>
       </div>
 

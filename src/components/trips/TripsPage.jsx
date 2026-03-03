@@ -233,7 +233,7 @@ export default function TripsPage({ toast, onNavigate }) {
           <div className="modal-sheet" onClick={e => e.stopPropagation()}>
             <div className="modal-handle" />
             <div className="modal-header">
-              <h2 className="modal-title">👥 {tr.membersCount} — {showMembers.name}</h2>
+              <h2 className="modal-title">👥 {tr.peopleTitle} — {showMembers.name}</h2>
               <button className="btn btn-icon" onClick={() => setShowMembers(null)}>✕</button>
             </div>
 
