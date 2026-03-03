@@ -44,13 +44,65 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   );
 }
 
-// ─── Firestore REST API (no Firebase Admin needed) ───────────────────────────
-// Uses the trip-fafb1 project directly via REST — no service account required
+// ─── Firestore REST API with Service Account auth ────────────────────────────
 const FIRESTORE_PROJECT = "trip-fafb1";
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents`;
 
+// Cache access token
+let _accessToken = null;
+let _tokenExpiry = 0;
+
+async function getAccessToken() {
+  const fetch = (await import("node-fetch")).default;
+  if (_accessToken && Date.now() < _tokenExpiry - 60000) return _accessToken;
+
+  // Load service account credentials
+  let creds;
+  const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
+  if (keyJson) {
+    creds = JSON.parse(keyJson);
+  } else if (keyPath) {
+    creds = JSON.parse(require("fs").readFileSync(require("path").resolve(keyPath), "utf8"));
+  } else {
+    throw new Error("No service account credentials found");
+  }
+
+  // Create JWT for Google OAuth2
+  const { createSign } = require("crypto");
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    iss: creds.client_email,
+    scope: "https://www.googleapis.com/auth/datastore",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  })).toString("base64url");
+
+  const sign = createSign("RSA-SHA256");
+  sign.update(`${header}.${payload}`);
+  const sig = sign.sign(creds.private_key, "base64url");
+  const jwt = `${header}.${payload}.${sig}`;
+
+  // Exchange JWT for access token
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error("Failed to get access token: " + JSON.stringify(data));
+
+  _accessToken = data.access_token;
+  _tokenExpiry = Date.now() + (data.expires_in || 3600) * 1000;
+  console.log("Got new Google access token");
+  return _accessToken;
+}
+
 async function firestoreQuery(collection, field, value) {
   const fetch = (await import("node-fetch")).default;
+  const token = await getAccessToken();
   const body = {
     structuredQuery: {
       from: [{ collectionId: collection }],
@@ -65,12 +117,22 @@ async function firestoreQuery(collection, field, value) {
   };
   const res = await fetch(
     `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents:runQuery`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    }
   );
   const rows = await res.json();
+  if (!Array.isArray(rows)) {
+    console.error("Firestore query error:", JSON.stringify(rows));
+    return [];
+  }
   return rows.filter(r => r.document).map(r => {
     const fields = r.document.fields || {};
-    // Parse Firestore field values
     const parse = v => {
       if (!v) return null;
       if (v.stringValue !== undefined) return v.stringValue;
@@ -91,7 +153,11 @@ async function firestoreQuery(collection, field, value) {
 
 async function firestoreDelete(collection, docId) {
   const fetch = (await import("node-fetch")).default;
-  await fetch(`${FIRESTORE_BASE}/${collection}/${docId}`, { method: "DELETE" });
+  const token = await getAccessToken();
+  await fetch(`${FIRESTORE_BASE}/${collection}/${docId}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
 }
 
 // ─── Google Auth (Vision OCR only) ───────────────────────────────────────────
