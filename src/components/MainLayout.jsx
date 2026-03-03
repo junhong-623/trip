@@ -9,6 +9,7 @@ import GalleryPage from "./gallery/GalleryPage";
 import PeoplePage from "./people/PeoplePage";
 import SummaryPage from "./summary/SummaryPage";
 import SettingsPage from "./settings/SettingsPage";
+import PlanPage from "./plan/PlanPage";
 import "./MainLayout.css";
 
 export default function MainLayout() {
@@ -23,6 +24,7 @@ export default function MainLayout() {
     { id: "trips",    icon: "🗺", label: tr.trips },
     { id: "receipts", icon: "🧾", label: tr.receipts },
     { id: "gallery",  icon: "📷", label: tr.gallery },
+    { id: "plan",     icon: "📅", label: tr.plan },
     { id: "people",   icon: "👥", label: tr.people },
     { id: "summary",  icon: "💰", label: tr.summary },
   ];
@@ -41,6 +43,7 @@ export default function MainLayout() {
       case "people":   return <PeoplePage {...props} />;
       case "summary":  return <SummaryPage {...props} />;
       case "settings": return <SettingsPage {...props} />;
+      case "plan":     return <PlanPage {...props} />;
       default:         return <TripsPage {...props} onNavigate={setTab} />;
     }
   };

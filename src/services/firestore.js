@@ -78,7 +78,7 @@ export const deleteSettlement = (tripId, settlementId) =>
 // ─── Trip cascade delete ──────────────────────────────────────────────────────
 // Deletes all sub-collections of a trip in batches (Firestore limit: 500 per batch)
 export const deleteTripSubcollections = async (tripId) => {
-  const COLS = ["receipts", "people", "photos", "settlements"];
+  const COLS = ["receipts", "people", "photos", "settlements", "schedule", "messages"];
   const fileIds = []; // Collect Drive fileIds for cleanup
 
   for (const col of COLS) {
@@ -106,6 +106,34 @@ export const deleteTripSubcollections = async (tripId) => {
 
   return fileIds; // Caller handles Drive deletion
 };
+
+
+// ─── Schedule (itinerary) ──────────────────────────────────────────────────────
+export const subscribeSchedule = (tripId, cb) =>
+  onSnapshot(query(sub(tripId, "schedule"), orderBy("date"), orderBy("time")), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+  );
+
+export const addScheduleItem = (tripId, data) =>
+  addDoc(sub(tripId, "schedule"), { ...data, createdAt: serverTimestamp() });
+
+export const updateScheduleItem = (tripId, itemId, data) =>
+  updateDoc(subDoc(tripId, "schedule", itemId), data);
+
+export const deleteScheduleItem = (tripId, itemId) =>
+  deleteDoc(subDoc(tripId, "schedule", itemId));
+
+// ─── Messages (chat) ──────────────────────────────────────────────────────────
+export const subscribeMessages = (tripId, cb) =>
+  onSnapshot(query(sub(tripId, "messages"), orderBy("createdAt")), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+  );
+
+export const addMessage = (tripId, data) =>
+  addDoc(sub(tripId, "messages"), { ...data, createdAt: serverTimestamp() });
+
+export const deleteMessage = (tripId, messageId) =>
+  deleteDoc(subDoc(tripId, "messages", messageId));
 
 // ─── Trip sharing ──────────────────────────────────────────────────────────────
 export const getTripByJoinCode = async (joinCode) => {
