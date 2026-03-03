@@ -1,4 +1,6 @@
 // pushService.js — Web Push subscription management
+import { db } from "./firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
 
@@ -21,25 +23,24 @@ export async function registerSW() {
 }
 
 export async function subscribePush(tripId, userId) {
-  if (!VAPID_PUBLIC_KEY) return null;
+  if (!VAPID_PUBLIC_KEY) { console.warn("No VAPID key"); return null; }
   try {
     const reg = await navigator.serviceWorker.ready;
-    const existing = await reg.pushManager.getSubscription();
-    if (existing) return existing;
-
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    // Save directly to Firestore from frontend — no backend needed
+    await setDoc(doc(db, "pushSubscriptions", `${tripId}_${userId}`), {
+      tripId,
+      userId,
+      subscription: JSON.parse(JSON.stringify(sub)),
+      updatedAt: serverTimestamp(),
     });
-
-    // Send subscription to backend
-    const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-    await fetch(`${BASE_URL}/api/push/subscribe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subscription: sub, tripId, userId }),
-    });
-
+    console.log("Push subscription saved to Firestore");
     return sub;
   } catch (e) {
     console.warn("Push subscribe failed:", e);
@@ -47,7 +48,7 @@ export async function subscribePush(tripId, userId) {
   }
 }
 
-export async function unsubscribePush() {
+export async function unsubscribePush(tripId, userId) {
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();

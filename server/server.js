@@ -9,7 +9,6 @@ const { google } = require("googleapis");
 const { ImageAnnotatorClient } = require("@google-cloud/vision");
 const cloudinary = require("cloudinary").v2;
 const webpush = require("web-push");
-const admin = require("firebase-admin");
 const path = require("path");
 
 const app = express();
@@ -45,24 +44,54 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   );
 }
 
-// ─── Firebase Admin init ─────────────────────────────────────────────────────
-let db = null;
-try {
-  const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
-  let credential;
-  if (keyJson) {
-    credential = admin.credential.cert(JSON.parse(keyJson));
-  } else if (keyPath) {
-    credential = admin.credential.cert(require("path").resolve(keyPath));
-  }
-  if (credential && !admin.apps.length) {
-    admin.initializeApp({ credential });
-    db = admin.firestore();
-    console.log("Firebase Admin initialized");
-  }
-} catch (e) {
-  console.warn("Firebase Admin init failed:", e.message);
+// ─── Firestore REST API (no Firebase Admin needed) ───────────────────────────
+// Uses the trip-fafb1 project directly via REST — no service account required
+const FIRESTORE_PROJECT = "trip-fafb1";
+const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents`;
+
+async function firestoreQuery(collection, field, value) {
+  const fetch = (await import("node-fetch")).default;
+  const body = {
+    structuredQuery: {
+      from: [{ collectionId: collection }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: field },
+          op: "EQUAL",
+          value: { stringValue: value }
+        }
+      }
+    }
+  };
+  const res = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents:runQuery`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+  );
+  const rows = await res.json();
+  return rows.filter(r => r.document).map(r => {
+    const fields = r.document.fields || {};
+    // Parse Firestore field values
+    const parse = v => {
+      if (!v) return null;
+      if (v.stringValue !== undefined) return v.stringValue;
+      if (v.mapValue) {
+        const obj = {};
+        Object.entries(v.mapValue.fields || {}).forEach(([k, val]) => { obj[k] = parse(val); });
+        return obj;
+      }
+      if (v.arrayValue) return (v.arrayValue.values || []).map(parse);
+      return null;
+    };
+    const doc = {};
+    Object.entries(fields).forEach(([k, v]) => { doc[k] = parse(v); });
+    doc._id = r.document.name.split("/").pop();
+    return doc;
+  });
+}
+
+async function firestoreDelete(collection, docId) {
+  const fetch = (await import("node-fetch")).default;
+  await fetch(`${FIRESTORE_BASE}/${collection}/${docId}`, { method: "DELETE" });
 }
 
 // ─── Google Auth (Vision OCR only) ───────────────────────────────────────────
@@ -336,26 +365,9 @@ app.post("/api/ocr/receipt", upload.single("file"), async (req, res) => {
 });
 
 // ─── POST /api/push/subscribe ────────────────────────────────────────────────
-app.post("/api/push/subscribe", async (req, res) => {
-  const { subscription, tripId, userId } = req.body;
-  if (!subscription || !tripId || !userId) {
-    return res.status(400).json({ message: "Missing subscription, tripId or userId" });
-  }
-  try {
-    if (db) {
-      // Save to Firestore — persists across Railway restarts
-      await db.collection("pushSubscriptions").doc(`${tripId}_${userId}`).set({
-        tripId, userId, subscription, updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      console.log(`Push subscription saved to Firestore: trip=${tripId} user=${userId}`);
-    } else {
-      return res.status(500).json({ message: "Firestore not available" });
-    }
-    res.json({ success: true });
-  } catch (e) {
-    console.error("Subscribe error:", e);
-    res.status(500).json({ message: e.message });
-  }
+// Frontend now saves subscriptions directly to Firestore — this endpoint kept for compatibility
+app.post("/api/push/subscribe", (req, res) => {
+  res.json({ success: true, note: "Frontend saves subscription directly to Firestore" });
 });
 
 // ─── POST /api/push/send ─────────────────────────────────────────────────────
@@ -364,22 +376,16 @@ app.post("/api/push/send", async (req, res) => {
   if (!tripId || !message) {
     return res.status(400).json({ message: "Missing tripId or message" });
   }
-  if (!db) return res.status(500).json({ message: "Firestore not available" });
-
   try {
-    // Load all subscriptions for this trip from Firestore
-    const snap = await db.collection("pushSubscriptions")
-      .where("tripId", "==", tripId)
-      .get();
-
-    const subs = snap.docs
-      .map(d => d.data())
-      .filter(s => s.userId !== senderUserId);
+    // Read subscriptions from Firestore via REST (no Firebase Admin needed)
+    const allSubs = await firestoreQuery("pushSubscriptions", "tripId", tripId);
+    const subs = allSubs.filter(s => s.userId !== senderUserId);
+    console.log(`Push: found ${subs.length} subscribers for trip ${tripId}`);
 
     if (subs.length === 0) return res.json({ sent: 0 });
 
     const payload = JSON.stringify({
-      title: senderName || "MateTrip",
+      title: senderName || "MateTrip 伴旅",
       body: message,
       url: "/trip/",
     });
@@ -388,30 +394,26 @@ app.post("/api/push/send", async (req, res) => {
     const deadDocs = [];
 
     await Promise.allSettled(
-      subs.map(async ({ userId, subscription }) => {
+      subs.map(async (s) => {
         try {
-          await webpush.sendNotification(subscription, payload);
+          await webpush.sendNotification(s.subscription, payload);
           sent++;
         } catch (err) {
           if (err.statusCode === 410 || err.statusCode === 404) {
-            deadDocs.push(`${tripId}_${userId}`);
+            deadDocs.push(s._id);
           }
-          console.warn(`Push failed for user ${userId}:`, err.statusCode || err.message);
+          console.warn(`Push failed for ${s.userId}:`, err.statusCode || err.message);
         }
       })
     );
 
-    // Clean up expired subscriptions from Firestore
-    if (deadDocs.length > 0) {
-      const batch = db.batch();
-      deadDocs.forEach(id => batch.delete(db.collection("pushSubscriptions").doc(id)));
-      await batch.commit();
-    }
+    // Clean up expired subscriptions
+    await Promise.allSettled(deadDocs.map(id => firestoreDelete("pushSubscriptions", id)));
 
     console.log(`Push sent: trip=${tripId} sent=${sent}/${subs.length}`);
     res.json({ sent, total: subs.length });
   } catch (e) {
-    console.error("Send push error:", e);
+    console.error("Send push error:", e.message);
     res.status(500).json({ message: e.message });
   }
 });
