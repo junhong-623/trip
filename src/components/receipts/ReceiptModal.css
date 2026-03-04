@@ -301,3 +301,68 @@
   max-width: 160px;
   font-size: 14px;
 }
+
+/* ── Receipt Tags ────────────────────────────────────────────────────────── */
+.tags-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  background: var(--sand);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  padding: 8px 10px;
+  min-height: 44px;
+  cursor: text;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tags-input-wrap:focus-within {
+  border-color: var(--terracotta);
+  background: white;
+}
+.receipt-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: white;
+  color: var(--ink);
+  border: 1.5px solid var(--sand-dark);
+  border-radius: 20px;
+  padding: 3px 4px 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--sand-dark);
+  border: none;
+  border-radius: 50%;
+  color: var(--ink-muted);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 5px;
+  transition: background 0.15s, color 0.15s;
+}
+.tag-remove:hover {
+  background: var(--terracotta);
+  color: white;
+}
+.tags-input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: transparent;
+  min-width: 60px;
+  flex: 1;
+}
+.tags-input::placeholder { color: var(--ink-muted); opacity: 0.7; }

@@ -53,6 +53,11 @@
 
 .schedule-day {}
 .schedule-day-label {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 6px 4px;
+  margin: -6px -4px 6px;
+  transition: background 0.15s;
   font-size: 13px;
   font-weight: 700;
   color: var(--terracotta);
@@ -321,3 +326,5 @@
   -webkit-appearance: none;
   appearance: none;
 }
+
+.schedule-day-label:hover { background: var(--sand); }

@@ -88,6 +88,14 @@ function groupByDate(items) {
     if (!map[key]) map[key] = [];
     map[key].push(item);
   });
+  // Sort items within each day by createdAt (stable — no jumping when time is empty)
+  Object.values(map).forEach(arr => {
+    arr.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+      const tb = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+      return ta - tb;
+    });
+  });
   return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
 }
 
@@ -194,6 +202,16 @@ export default function PlanPage({ toast }) {
   const getLinkedPerson = (uid) => people.find(p => p.linkedUserId === uid) || null;
   const [lastReadTime, setLastReadTime] = useState(() => getLastRead(activeTrip?.id || ""));
   const [showEventModal, setShowEventModal] = useState(false);
+  const [hideExpired, setHideExpired] = useState(true);
+  const [expandedDates, setExpandedDates] = useState(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return new Set([today]);
+  });
+  const toggleDate = (date) => setExpandedDates(prev => {
+    const next = new Set(prev);
+    next.has(date) ? next.delete(date) : next.add(date);
+    return next;
+  });
   const [editEvent, setEditEvent] = useState(null);
   const [msgText, setMsgText] = useState("");
   const [sending, setSending] = useState(false);
@@ -304,7 +322,12 @@ export default function PlanPage({ toast }) {
     </div>
   );
 
-  const grouped = groupByDate(events);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const visibleEvents = hideExpired
+    ? events.filter(e => !e.date || e.date >= todayStr)
+    : events;
+  const grouped = groupByDate(visibleEvents);
+  const expiredCount = events.filter(e => e.date && e.date < todayStr).length;
 
   return (
     <div className="plan-page">
@@ -344,13 +367,34 @@ export default function PlanPage({ toast }) {
             </div>
           ) : (
             <div className="schedule-list">
-              {grouped.map(([date, items]) => (
+              {/* Hide expired toggle */}
+              {expiredCount > 0 && (
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    style={{fontSize:12,padding:"4px 10px"}}
+                    onClick={() => setHideExpired(h => !h)}>
+                    {hideExpired ? `🕐 显示 ${expiredCount} 个过期日程` : "隐藏过期日程"}
+                  </button>
+                </div>
+              )}
+
+              {grouped.map(([date, items]) => {
+                const isExpanded = expandedDates.has(date);
+                const isToday = date === todayStr;
+                const isPast = date !== "undated" && date < todayStr;
+                return (
                 <div key={date} className="schedule-day">
-                  <div className="schedule-day-label">
+                  <div className="schedule-day-label"
+                    onClick={() => toggleDate(date)}
+                    style={{cursor:"pointer",display:"flex",alignItems:"center",gap:8,userSelect:"none"}}>
                     {formatEventDate(date, tr)}
-                    <span className="schedule-day-date">{date !== "undated" ? date : ""}</span>
+                    {isToday && <span style={{fontSize:10,fontWeight:700,color:"var(--terracotta)",background:"var(--terracotta-pale)",padding:"1px 6px",borderRadius:8}}>今天</span>}
+                    {isPast && <span style={{fontSize:10,color:"var(--ink-muted)",opacity:0.6}}>已过期</span>}
+                    <span className="schedule-day-date" style={{marginRight:"auto"}}>{date !== "undated" ? date : ""}</span>
+                    <span style={{fontSize:13,color:"var(--ink-muted)",transition:"transform 0.2s",display:"inline-block",transform:isExpanded?"rotate(0deg)":"rotate(-90deg)"}}>▾</span>
                   </div>
-                  {items.map(item => (
+                  {isExpanded && items.map(item => (
                     <div key={item.id} className="event-card"
                       onClick={() => { setEditEvent(item); setShowEventModal(true); }}>
                       <div className="event-time-col">
@@ -386,7 +430,8 @@ export default function PlanPage({ toast }) {
                     </div>
                   ))}
                 </div>
-              ))}
+                );
+              })}
               {/* Add event card at bottom */}
               <button className="event-add-card"
                 onClick={() => { setEditEvent(null); setShowEventModal(true); }}>
