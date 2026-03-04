@@ -129,12 +129,14 @@ function EventModal({ event, onSave, onClose, onDelete, tr }) {
           <div className="form-group">
             <label className="form-label">{tr.eventDate} *</label>
             <input className="form-input" type="date" value={form.date}
-              onChange={e => set("date", e.target.value)} />
+              onChange={e => set("date", e.target.value)}
+              style={{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block"}} />
           </div>
           <div className="form-group">
             <label className="form-label">{tr.eventTime}</label>
             <input className="form-input" type="time" value={form.time}
-              onChange={e => set("time", e.target.value)} />
+              onChange={e => set("time", e.target.value)}
+              style={{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block"}} />
           </div>
           <div className="form-group">
             <label className="form-label">🗺 Google Maps</label>

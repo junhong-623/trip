@@ -138,7 +138,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  height: calc(var(--viewport-height, 100dvh) - 150px);
+  height: calc(var(--viewport-height, 100dvh) - 180px);
 }
 .chat-messages {
   flex: 1;
@@ -310,10 +310,14 @@
   flex-shrink: 0;
 }
 
-/* Fix date/time inputs on mobile */
+/* Fix date/time inputs on mobile — iOS Safari needs all of these */
 .plan-page .form-input[type="date"],
 .plan-page .form-input[type="time"] {
-  width: 100%;
-  box-sizing: border-box;
-  min-width: 0;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  -webkit-appearance: none;
+  appearance: none;
 }
