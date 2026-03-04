@@ -48,7 +48,7 @@
 }
 
 /* ── Schedule ─────────────────────────────────────────────────── */
-.schedule-content { flex: 1; }
+.schedule-content { flex: 1; overflow-y: auto; min-height: 0; }
 .schedule-list { display: flex; flex-direction: column; gap: 20px; }
 
 .schedule-day {}
