@@ -1,15 +1,37 @@
 import { useState, useEffect } from "react";
 import { useLang } from "../../contexts/LangContext";
+import { useTrip } from "../../contexts/TripContext";
+import { db } from "../../services/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { dicebearUrl } from "../../utils/utils";
 
 const STYLES = ["notionists","adventurer","avataaars","big-ears","croodles","fun-emoji","icons","identicon","lorelei","micah","miniavs","open-peeps","personas","pixel-art"];
 
-export default function PersonModal({ person, onSave, onClose }) {
+export default function PersonModal({ person, onSave, onClose, currentUserId, isOwner, people = [] }) {
   const { tr } = useLang();
-  const [form, setForm] = useState({ name: "", gender: "other", avatarUrl: "", dicebearSeed: "", dicebearStyle: "notionists" });
+  const { activeTrip } = useTrip();
+  const [tripMembers, setTripMembers] = useState([]); // [{uid, displayName}]
+  const [form, setForm] = useState({ name: "", gender: "other", avatarUrl: "", dicebearSeed: "", dicebearStyle: "notionists", linkedUserId: "" });
   const [preview, setPreview] = useState("");
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("dicebear");
+
+  useEffect(() => {
+    if (!isOwner || !activeTrip) return;
+    const fetchMembers = async () => {
+      const allUids = [activeTrip.createdBy, ...(activeTrip.memberIds || [])].filter(Boolean);
+      const unique = [...new Set(allUids)];
+      const profiles = await Promise.all(unique.map(async uid => {
+        try {
+          const snap = await getDoc(doc(db, "usernames", uid));
+          const data = snap.data() || {};
+          return { uid, displayName: data.username || data.email || uid };
+        } catch { return { uid, displayName: uid }; }
+      }));
+      setTripMembers(profiles);
+    };
+    fetchMembers();
+  }, [isOwner, activeTrip?.id]);
 
   useEffect(() => {
     if (person) {
@@ -19,6 +41,7 @@ export default function PersonModal({ person, onSave, onClose }) {
         avatarUrl: person.avatarUrl || "",
         dicebearSeed: person.dicebearSeed || person.name || "",
         dicebearStyle: person.dicebearStyle || "notionists",
+        linkedUserId: person.linkedUserId || "",
       });
       if (person.avatarUrl && !person.avatarUrl.includes("dicebear")) {
         setPreview(person.avatarUrl);
@@ -108,6 +131,29 @@ export default function PersonModal({ person, onSave, onClose }) {
               <label className="form-label">{tr.uploadImage}</label>
               <input type="file" accept="image/*" onChange={handleFileChange}
                 style={{fontSize:14,padding:"8px 0"}} />
+            </div>
+          )}
+
+          {/* Link to user account */}
+          {(isOwner || !person?.linkedUserId || person?.linkedUserId === currentUserId) && (
+            <div className="form-group">
+              <label className="form-label">🔗 {tr.linkUser || "关联用户账号"}</label>
+              <select className="form-select" value={form.linkedUserId}
+                onChange={e => set("linkedUserId", e.target.value)}>
+                <option value="">{tr.noLink || "— 不关联 —"}</option>
+                {isOwner ? (
+                  // Owner sees all trip members
+                  tripMembers.map(m => (
+                    <option key={m.uid} value={m.uid}>{m.displayName}</option>
+                  ))
+                ) : (
+                  // Non-owner can only link themselves
+                  <option value={currentUserId}>{tr.linkMyself || "关联我自己"}</option>
+                )}
+              </select>
+              <p className="form-hint" style={{marginTop:4}}>
+                {tr.linkUserHint || "关联后，聊天中会显示此旅伴的头像和名字"}
+              </p>
             </div>
           )}
 

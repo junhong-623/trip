@@ -138,7 +138,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  height: calc(var(--viewport-height, 100dvh) - 220px);
+  height: calc(var(--viewport-height, 100dvh) - 150px);
 }
 .chat-messages {
   flex: 1;
@@ -237,7 +237,7 @@
 .chat-input-bar {
   display: flex;
   gap: 8px;
-  padding-top: 10px;
+  padding: 8px 0 0;
   border-top: 1px solid var(--sand-dark);
   flex-shrink: 0;
 }

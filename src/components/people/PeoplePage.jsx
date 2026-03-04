@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTrip } from "../../contexts/TripContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useLang } from "../../contexts/LangContext";
 import { subscribePeople, addPerson, updatePerson, deletePerson } from "../../services/firestore";
 import { dicebearUrl } from "../../utils/utils";
@@ -8,6 +9,7 @@ import "./PeoplePage.css";
 
 export default function PeoplePage({ toast }) {
   const { activeTrip } = useTrip();
+  const { user } = useAuth();
   const { tr, t } = useLang();
   const [people, setPeople] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -42,7 +44,10 @@ export default function PeoplePage({ toast }) {
 
   if (!activeTrip) return (
     <div className="empty-state">
-      <div className="empty-state-icon"><img src="/trip/icons/icon-192.png" alt="MateTrip" style={{width:64,height:64,borderRadius:16,opacity:0.85}} /></div>
+      <div className="empty-state-icon">
+        <img src="/trip/icons/icon-192.png" alt="MateTrip"
+          style={{ width: 64, height: 64, borderRadius: 16, opacity: 0.85 }} />
+      </div>
       <div className="empty-state-title">{tr.noTripSelected}</div>
       <div className="empty-state-text">{tr.selectTripFirst}</div>
     </div>
@@ -52,9 +57,11 @@ export default function PeoplePage({ toast }) {
     ? t(tr.participants, people.length)
     : t(tr.participantsPlural, people.length);
 
+  const isOwner = activeTrip?.createdBy === user?.uid;
+
   return (
     <div>
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <h1 className="page-title">{tr.peopleTitle}</h1>
           <p className="page-subtitle">{countLabel} · {activeTrip.name}</p>
@@ -69,7 +76,7 @@ export default function PeoplePage({ toast }) {
           <div className="empty-state-icon">👤</div>
           <div className="empty-state-title">{tr.noPersonYet}</div>
           <div className="empty-state-text">{tr.addParticipants}</div>
-          <button className="btn btn-primary" style={{marginTop:16}} onClick={() => setShowModal(true)}>
+          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowModal(true)}>
             {tr.addFirstPerson}
           </button>
         </div>
@@ -88,6 +95,11 @@ export default function PeoplePage({ toast }) {
                 </div>
               </div>
               <div className="person-name">{person.name}</div>
+              {person.linkedUserId && (
+                <div style={{ fontSize: 10, color: "var(--terracotta)", marginBottom: 4 }}>
+                  {tr.linked || "🔗 已关联"}
+                </div>
+              )}
               <div className="person-actions">
                 <button className="btn btn-icon btn-sm"
                   onClick={() => { setEditPerson(person); setShowModal(true); }}>✏</button>
@@ -104,6 +116,9 @@ export default function PeoplePage({ toast }) {
           person={editPerson}
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditPerson(null); }}
+          currentUserId={user?.uid}
+          isOwner={isOwner}
+          people={people}
         />
       )}
     </div>

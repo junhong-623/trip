@@ -161,6 +161,10 @@ export const T = {
     unsettled: "Settlement undone",
     pending: "pending",
     // Plan page
+    linkUser: "Link Account",
+    noLink: "— No link —",
+    linkMyself: "Link to myself",
+    linkUserHint: "Chat will show this travel companion's avatar and name",
     plan: "Plan",
     schedule: "Schedule",
     chat: "Chat",
@@ -394,6 +398,10 @@ export const T = {
     unsettled: "已取消结算",
     pending: "笔待结清",
     // 计划页面
+    linkUser: "关联用户账号",
+    noLink: "— 不关联 —",
+    linkMyself: "关联我自己",
+    linkUserHint: "聊天中会显示此旅伴的头像和名字",
     plan: "计划",
     schedule: "日程",
     chat: "留言",
@@ -623,6 +631,10 @@ export const T = {
     unsettled: "Penyelesaian dibuat asal",
     pending: "belum selesai",
     // Halaman Rancangan
+    linkUser: "Pautkan Akaun",
+    noLink: "— Tiada pautan —",
+    linkMyself: "Pautkan diri saya",
+    linkUserHint: "Sembang akan tunjukkan avatar dan nama rakan perjalanan ini",
     plan: "Rancangan",
     schedule: "Jadual",
     chat: "Sembang",

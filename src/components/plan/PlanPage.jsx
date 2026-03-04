@@ -5,8 +5,10 @@ import { useLang } from "../../contexts/LangContext";
 import {
   subscribeSchedule, addScheduleItem, updateScheduleItem, deleteScheduleItem,
   subscribeMessages, addMessage, deleteMessage,
+  subscribePeople,
 } from "../../services/firestore";
 import "./PlanPage.css";
+import { dicebearUrl } from "../../utils/utils";
 import { registerSW, subscribePush, isPushSupported } from "../../services/pushService";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
@@ -176,12 +178,17 @@ export default function PlanPage({ toast }) {
   const { user } = useAuth();
   const { tr } = useLang();
   const [activeTab, setActiveTab] = useState("schedule");
+
+  // Find linked person for a given uid
+  const getLinkedPerson = (uid) => people.find(p => p.linkedUserId === uid) || null;
+
   const markRead = () => {
     if (!activeTrip?.id) return;
     setLastRead(activeTrip.id);
     setLastReadTime(Date.now());
   };
   const [events, setEvents] = useState([]);
+  const [people, setPeople] = useState([]);
   const [messages, setMessages] = useState([]);
   const [lastReadTime, setLastReadTime] = useState(() => getLastRead(activeTrip?.id || ""));
   const [showEventModal, setShowEventModal] = useState(false);
@@ -199,6 +206,7 @@ export default function PlanPage({ toast }) {
   useEffect(() => {
     if (!activeTrip?.id) return;
     const u1 = subscribeSchedule(activeTrip.id, setEvents);
+    const u0 = subscribePeople(activeTrip.id, setPeople);
     const lastRead = getLastRead(activeTrip.id);
     const u2 = subscribeMessages(activeTrip.id, msgs => {
       setMessages(msgs);
@@ -219,7 +227,7 @@ export default function PlanPage({ toast }) {
         }
       });
     });
-    return () => { u1(); u2(); };
+    return () => { u0(); u1(); u2(); };
   }, [activeTrip?.id, user?.uid, activeTab]);
 
   // Auto-scroll chat to bottom
@@ -257,12 +265,15 @@ export default function PlanPage({ toast }) {
     if (!text || sending) return;
     setSending(true);
     setMsgText("");
-    const displayName = user.displayName || user.email || "User";
+    const linkedPerson = getLinkedPerson(user.uid);
+    const displayName = linkedPerson?.name || user.displayName || user.email || "User";
+    const avatarUrl = linkedPerson?.avatarUrl || "";
     try {
       await addMessage(activeTrip.id, {
         text,
         uid: user.uid,
         displayName,
+        avatarUrl,
       });
       // Trigger push to other members
       fetch(`${API}/api/push/send`, {
@@ -425,7 +436,10 @@ export default function PlanPage({ toast }) {
                   <div key={msg.id} className={`msg-row ${isMe ? "msg-me" : "msg-other"}`}>
                     {!isMe && (
                       <div className="msg-avatar">
-                        {msg.displayName?.[0]?.toUpperCase() || "?"}
+                        {msg.avatarUrl
+                          ? <img src={msg.avatarUrl} alt={msg.displayName}
+                              style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
+                          : msg.displayName?.[0]?.toUpperCase() || "?"}
                       </div>
                     )}
                     <div className="msg-bubble-wrap">
