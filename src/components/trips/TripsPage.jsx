@@ -67,6 +67,26 @@ export default function TripsPage({ toast, onNavigate }) {
     }
   };
 
+  const handleTransferOwner = async (trip, newOwnerUid, newOwnerName) => {
+    if (!confirm(`将房主权限转让给 ${newOwnerName}？转让后你将变为普通成员。`)) return;
+    try {
+      const { updateDoc, doc: firestoreDoc, arrayRemove, arrayUnion } = await import("firebase/firestore");
+      await updateDoc(firestoreDoc(db, "trips", trip.id), {
+        createdBy: newOwnerUid,
+        memberIds: arrayUnion(user.uid),   // old owner becomes a member
+      });
+      // Update local state
+      setShowMembers(prev => prev ? {
+        ...prev,
+        createdBy: newOwnerUid,
+        memberIds: [...(prev.memberIds || []).filter(id => id !== newOwnerUid), user.uid],
+      } : prev);
+      toast.show("已转让房主 ✓", "success");
+    } catch (e) {
+      toast.show(e.message, "error");
+    }
+  };
+
   const handleSave = async (data) => {
     try {
       if (editTrip) {
@@ -233,7 +253,7 @@ export default function TripsPage({ toast, onNavigate }) {
           <div className="modal-sheet" onClick={e => e.stopPropagation()}>
             <div className="modal-handle" />
             <div className="modal-header">
-              <h2 className="modal-title">👥 {tr.peopleTitle} — {showMembers.name}</h2>
+              <h2 className="modal-title">👥 {tr.membersCount} — {showMembers.name}</h2>
               <button className="btn btn-icon" onClick={() => setShowMembers(null)}>✕</button>
             </div>
 
@@ -303,15 +323,25 @@ export default function TripsPage({ toast, onNavigate }) {
                     <span className="member-badge joined">{tr.youJoined}</span>
                   </div>
                   {isOwner(showMembers) && (
-                    <button
-                      className="btn btn-icon btn-sm"
-                      style={{color:"var(--error)",marginLeft:"auto"}}
-                      disabled={kicking === p.uid}
-                      onClick={() => handleKick(showMembers, p.uid)}
-                      title="Remove member"
-                    >
-                      {kicking === p.uid ? "…" : "✕"}
-                    </button>
+                    <div style={{display:"flex",gap:6,marginLeft:"auto"}}>
+                      <button
+                        className="btn btn-icon btn-sm"
+                        style={{fontSize:13,color:"var(--terracotta)"}}
+                        onClick={() => handleTransferOwner(showMembers, p.uid, p.displayName)}
+                        title="转让房主"
+                      >
+                        👑
+                      </button>
+                      <button
+                        className="btn btn-icon btn-sm"
+                        style={{color:"var(--error)"}}
+                        disabled={kicking === p.uid}
+                        onClick={() => handleKick(showMembers, p.uid)}
+                        title="Remove member"
+                      >
+                        {kicking === p.uid ? "…" : "✕"}
+                      </button>
+                    </div>
                   )}
                 </div>
               )})
