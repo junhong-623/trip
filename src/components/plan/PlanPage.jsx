@@ -179,9 +179,6 @@ export default function PlanPage({ toast }) {
   const { tr } = useLang();
   const [activeTab, setActiveTab] = useState("schedule");
 
-  // Find linked person for a given uid
-  const getLinkedPerson = (uid) => people.find(p => p.linkedUserId === uid) || null;
-
   const markRead = () => {
     if (!activeTrip?.id) return;
     setLastRead(activeTrip.id);
@@ -190,6 +187,9 @@ export default function PlanPage({ toast }) {
   const [events, setEvents] = useState([]);
   const [people, setPeople] = useState([]);
   const [messages, setMessages] = useState([]);
+
+  // Resolve display info from linked person (runs at render time, always fresh)
+  const getLinkedPerson = (uid) => people.find(p => p.linkedUserId === uid) || null;
   const [lastReadTime, setLastReadTime] = useState(() => getLastRead(activeTrip?.id || ""));
   const [showEventModal, setShowEventModal] = useState(false);
   const [editEvent, setEditEvent] = useState(null);
@@ -265,15 +265,12 @@ export default function PlanPage({ toast }) {
     if (!text || sending) return;
     setSending(true);
     setMsgText("");
-    const linkedPerson = getLinkedPerson(user.uid);
-    const displayName = linkedPerson?.name || user.displayName || user.email || "User";
-    const avatarUrl = linkedPerson?.avatarUrl || "";
+    const fallbackName = user.displayName || user.email || "User";
     try {
       await addMessage(activeTrip.id, {
         text,
         uid: user.uid,
-        displayName,
-        avatarUrl,
+        displayName: fallbackName, // fallback only; render uses linked person
       });
       // Trigger push to other members
       fetch(`${API}/api/push/send`, {
@@ -282,7 +279,7 @@ export default function PlanPage({ toast }) {
         body: JSON.stringify({
           tripId: activeTrip.id,
           senderUserId: user.uid,
-          senderName: displayName,
+          senderName: fallbackName,
           message: text,
         }),
       }).catch(() => {}); // fire and forget
@@ -432,20 +429,22 @@ export default function PlanPage({ toast }) {
             ) : (
               messages.map(msg => {
                 const isMe = msg.uid === user.uid;
+                const linked = getLinkedPerson(msg.uid);
+                const shownName = linked?.name || msg.displayName || "?";
+                const shownAvatar = linked?.avatarUrl || "";
                 return (
                   <div key={msg.id} className={`msg-row ${isMe ? "msg-me" : "msg-other"}`}>
                     {!isMe && (
                       <div className="msg-avatar">
-                        {msg.avatarUrl
-                          ? <img src={msg.avatarUrl} alt={msg.displayName}
+                        {shownAvatar
+                          ? <img src={shownAvatar} alt={shownName}
                               style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
-                          : msg.displayName?.[0]?.toUpperCase() || "?"}
+                          : shownName[0]?.toUpperCase() || "?"}
                       </div>
                     )}
                     <div className="msg-bubble-wrap">
-                      {!isMe && <div className="msg-name">{msg.displayName}</div>}
-                      <div className={`msg-bubble ${isMe ? "bubble-me" : "bubble-other"}`}
-                        onLongPress={() => isMe && handleDeleteMsg(msg)}>
+                      {!isMe && <div className="msg-name">{shownName}</div>}
+                      <div className={`msg-bubble ${isMe ? "bubble-me" : "bubble-other"}`}>
                         {msg.text}
                         {isMe && (
                           <button className="msg-delete-btn"
