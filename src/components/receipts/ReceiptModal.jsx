@@ -11,6 +11,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
   const isExisting = !!receipt?.id; // lock financial fields for existing receipts
   const [ocrLoading, setOcrLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [editingEatersItem, setEditingEatersItem] = useState(null);
   const [showItemEditor, setShowItemEditor] = useState(false);
 
@@ -22,8 +23,8 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
     payerId: people[0]?.id || "",
     participants: people.map(p => p.id),
     googleMapLink: "",
-    lat: "",
-    lng: "",
+    locationName: "",
+    tags: [],
     ocrRawText: "",
   });
 
@@ -36,8 +37,8 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
         payerId: receipt.payerId || people[0]?.id || "",
         participants: receipt.participants || people.map(p => p.id),
         googleMapLink: receipt.googleMapLink || "",
-        lat: receipt.lat || "",
-        lng: receipt.lng || "",
+        locationName: receipt.locationName || "",
+        tags: receipt.tags || [],
         ocrRawText: receipt.ocrRawText || "",
       });
       setItems(receipt.items || []);
@@ -110,8 +111,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
         ...form,
         totalAmount: parseAmount(form.totalAmount),
         items: items.map(i => ({ ...i, price: parseAmount(i.price) })),
-        lat: form.lat ? Number(form.lat) : null,
-        lng: form.lng ? Number(form.lng) : null,
+
       };
       if (receipt) {
         await updateReceipt(tripId, receipt.id, data);
@@ -126,6 +126,39 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) { toast.show(tr.locationFailed, "error"); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const link = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        set("googleMapLink", link);
+        // Reverse geocode via OpenStreetMap Nominatim (free, no key needed)
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+            { headers: { "Accept-Language": "zh-CN,zh,en", "User-Agent": "MateTrip/1.0" } }
+          );
+          const data = await res.json();
+          // Pick the most useful name: shop/amenity > road+house > suburb
+          const a = data.address || {};
+          const placeName =
+            a.shop || a.restaurant || a.cafe || a.amenity || a.tourism ||
+            a.leisure || a.building ||
+            (a.road ? (a.house_number ? `${a.road} ${a.house_number}` : a.road) : null) ||
+            a.suburb || a.neighbourhood ||
+            data.display_name?.split(",")[0] ||
+            "";
+          if (placeName) set("locationName", placeName);
+        } catch {}
+        setLocating(false);
+        toast.show(tr.locationAdded, "success");
+      },
+      () => { toast.show(tr.locationFailed, "error"); setLocating(false); }
+    );
   };
 
   return (
@@ -293,18 +326,67 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             )}
 
             <div className="form-section">
+              <div className="section-title">{tr.receiptTags}</div>
+              <div className="tags-input-wrap">
+                {form.tags.map((tag, i) => (
+                  <span key={i} className="receipt-tag">
+                    {tag}
+                    <button type="button" className="tag-remove"
+                      onClick={() => set("tags", form.tags.filter((_, j) => j !== i))}>×</button>
+                  </span>
+                ))}
+                <input
+                  className="tags-input"
+                  placeholder={form.tags.length === 0 ? tr.tagPlaceholder : "+"}
+                  onKeyDown={e => {
+                    if ((e.key === "Enter" || e.key === ",") && e.target.value.trim()) {
+                      e.preventDefault();
+                      const val = e.target.value.trim().replace(/,$/, "");
+                      if (val && !form.tags.includes(val)) set("tags", [...form.tags, val]);
+                      e.target.value = "";
+                    }
+                  }}
+                  onBlur={e => {
+                    if (e.target.value.trim()) {
+                      const val = e.target.value.trim();
+                      if (!form.tags.includes(val)) set("tags", [...form.tags, val]);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="form-section">
               <div className="section-title">{tr.location}</div>
-              <div className="form-group">
-                <input className="form-input" value={form.googleMapLink}
-                  onChange={e => set("googleMapLink", e.target.value)}
-                  placeholder={tr.googleMapsLink} />
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <button type="button" className="btn btn-secondary btn-sm"
+                  onClick={handleGetLocation} disabled={locating}
+                  style={{ whiteSpace: "nowrap" }}>
+                  {locating ? tr.locating : "📍 " + (tr.getLocation || "获取当前位置")}
+                </button>
+                {form.locationName && (
+                  <span style={{ fontSize: 13, color: "var(--ink)", alignSelf: "center",
+                    flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {form.locationName}
+                  </span>
+                )}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <input className="form-input" type="number" step="any" inputMode="decimal"
-                  value={form.lat} onChange={e => set("lat", e.target.value)} placeholder={tr.latitude} />
-                <input className="form-input" type="number" step="any" inputMode="decimal"
-                  value={form.lng} onChange={e => set("lng", e.target.value)} placeholder={tr.longitude} />
-              </div>
+              <input className="form-input" value={form.googleMapLink}
+                onChange={e => set("googleMapLink", e.target.value)}
+                placeholder="https://maps.app.goo.gl/..."
+                style={{ fontSize: 13 }} />
+              {form.googleMapLink && (
+                <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center" }}>
+                  <a href={form.googleMapLink} target="_blank" rel="noopener"
+                    className="receipt-map-link" style={{ fontSize: 13 }}>
+                    ✓ {tr.viewOnMap || "查看地图"}
+                  </a>
+                  <button type="button" className="btn btn-icon btn-sm"
+                    style={{ color: "var(--ink-muted)", marginLeft: "auto" }}
+                    onClick={() => { set("googleMapLink", ""); set("locationName", ""); }}>✕</button>
+                </div>
+              )}
             </div>
           </div>
 

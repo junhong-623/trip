@@ -14,6 +14,7 @@ export default function ReceiptsPage({ toast }) {
   const [people, setPeople] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editReceipt, setEditReceipt] = useState(null);
+  const [selectedTag, setSelectedTag] = useState(null);
 
   useEffect(() => {
     if (!activeTrip?.id) return;
@@ -22,7 +23,9 @@ export default function ReceiptsPage({ toast }) {
     return () => { u1(); u2(); };
   }, [activeTrip?.id]);
 
-  const totalSpend = receipts.reduce((s, r) => s + (r.totalAmount || 0), 0);
+  const allTags = [...new Set(receipts.flatMap(r => r.tags || []))].sort();
+  const filtered = selectedTag ? receipts.filter(r => r.tags?.includes(selectedTag)) : receipts;
+  const totalSpend = filtered.reduce((s, r) => s + (r.totalAmount || 0), 0);
 
   const handleDelete = async (receipt) => {
     if (!confirm(tr.confirmDeleteReceipt)) return;
@@ -37,9 +40,9 @@ export default function ReceiptsPage({ toast }) {
     </div>
   );
 
-  const subtitle = receipts.length === 1
-    ? t(tr.receiptsSubtitle, receipts.length, formatAmount(totalSpend, activeTrip.baseCurrency))
-    : t(tr.receiptsSubtitlePlural, receipts.length, formatAmount(totalSpend, activeTrip.baseCurrency));
+  const subtitle = filtered.length === 1
+    ? t(tr.receiptsSubtitle, filtered.length, formatAmount(totalSpend, activeTrip.baseCurrency))
+    : t(tr.receiptsSubtitlePlural, filtered.length, formatAmount(totalSpend, activeTrip.baseCurrency));
 
   return (
     <div>
@@ -53,7 +56,24 @@ export default function ReceiptsPage({ toast }) {
         </button>
       </div>
 
-      {receipts.length === 0 ? (
+      {allTags.length > 0 && (
+        <div className="tag-filter-bar">
+          <button
+            className={`tag-filter-chip ${!selectedTag ? "active" : ""}`}
+            onClick={() => setSelectedTag(null)}>
+            {tr.tabAll || "全部"}
+          </button>
+          {allTags.map(tag => (
+            <button key={tag}
+              className={`tag-filter-chip ${selectedTag === tag ? "active" : ""}`}
+              onClick={() => setSelectedTag(t => t === tag ? null : tag)}>
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">🧾</div>
           <div className="empty-state-title">{tr.noReceiptsYet}</div>
@@ -64,7 +84,7 @@ export default function ReceiptsPage({ toast }) {
         </div>
       ) : (
         <div className="receipts-list">
-          {receipts.map(r => (
+          {filtered.map(r => (
             <ReceiptCard
               key={r.id}
               receipt={r}

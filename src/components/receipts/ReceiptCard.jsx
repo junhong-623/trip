@@ -18,8 +18,15 @@ export default function ReceiptCard({ receipt, people, currency, onEdit, onDelet
           {receipt.googleMapLink && (
             <a href={receipt.googleMapLink} target="_blank" rel="noopener"
               className="receipt-map-link" onClick={e => e.stopPropagation()}>
-              {tr.viewOnMap}
+              📍 {tr.viewOnMap}
             </a>
+          )}
+          {receipt.tags?.length > 0 && (
+            <div className="receipt-card-tags">
+              {receipt.tags.map((tag, i) => (
+                <span key={i} className="receipt-tag-chip">{tag}</span>
+              ))}
+            </div>
           )}
         </div>
         <div className="receipt-card-right">

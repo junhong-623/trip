@@ -97,3 +97,53 @@
   align-items: center;
   padding-left: 6px;
 }
+
+/* Tag filter bar */
+.tag-filter-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex-wrap: nowrap;
+}
+.tag-filter-bar::-webkit-scrollbar { display: none; }
+
+.tag-filter-chip {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--sand-dark);
+  background: white;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tag-filter-chip.active {
+  background: var(--terracotta);
+  border-color: var(--terracotta);
+  color: white;
+  font-weight: 700;
+}
+
+/* Tag chips on receipt card */
+.receipt-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.receipt-tag-chip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--terracotta-pale);
+  color: var(--terracotta);
+  letter-spacing: 0.2px;
+}
