@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useLang } from "../../contexts/LangContext";
 import { useTrip } from "../../contexts/TripContext";
 import { db } from "../../services/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, writeBatch } from "firebase/firestore";
+import { updatePerson } from "../../services/firestore";
 import { dicebearUrl } from "../../utils/utils";
 
 const STYLES = ["notionists","adventurer","avataaars","big-ears","croodles","fun-emoji","icons","identicon","lorelei","micah","miniavs","open-peeps","personas","pixel-art"];
@@ -71,10 +72,28 @@ export default function PersonModal({ person, onSave, onClose, currentUserId, is
     e.preventDefault();
     if (!form.name) return;
     setSaving(true);
-    const avatarUrl = tab === "dicebear"
-      ? dicebearUrl(form.dicebearSeed || form.name, form.dicebearStyle)
-      : (preview || form.avatarUrl || dicebearUrl(form.name));
-    await onSave({ ...form, avatarUrl, dicebearSeed: form.dicebearSeed || form.name });
+    try {
+      const avatarUrl = tab === "dicebear"
+        ? dicebearUrl(form.dicebearSeed || form.name, form.dicebearStyle)
+        : (preview || form.avatarUrl || dicebearUrl(form.name));
+
+      const newLinkedUserId = form.linkedUserId;
+
+      // One-user-one-companion: if linking a user, unlink them from any other person first
+      if (newLinkedUserId) {
+        const currentPersonId = person?.id;
+        const othersLinked = people.filter(
+          p => p.linkedUserId === newLinkedUserId && p.id !== currentPersonId
+        );
+        for (const other of othersLinked) {
+          await updatePerson(activeTrip.id, other.id, { ...other, linkedUserId: "" });
+        }
+      }
+
+      await onSave({ ...form, avatarUrl, dicebearSeed: form.dicebearSeed || form.name });
+    } catch (err) {
+      console.error("PersonModal save error:", err);
+    }
     setSaving(false);
   };
 

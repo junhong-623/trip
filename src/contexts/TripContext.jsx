@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, query, where, orderBy, serverTimestamp, arrayUnion, arrayRemove, getDocs
+  doc, getDoc, query, where, orderBy, serverTimestamp, arrayUnion, arrayRemove, getDocs
 } from "firebase/firestore";
 import { db } from "../services/firebase";
-import { deleteTripSubcollections } from "../services/firestore";
+import { deleteTripSubcollections, addPerson } from "../services/firestore";
+import { dicebearUrl } from "../utils/utils";
 import { deleteFromDrive } from "../services/api";
 import { useAuth } from "./AuthContext";
 
@@ -15,6 +16,25 @@ function generateJoinCode() {
   let code = "";
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+
+// Auto-create a companion for a user when they join/create a trip
+async function autoCreateCompanion(tripId, uid, db) {
+  try {
+    const userSnap = await getDoc(doc(db, "usernames", uid));
+    const userData = userSnap.exists() ? userSnap.data() : {};
+    const name = userData.displayName || userData.username || "Traveler";
+    await addPerson(tripId, {
+      name,
+      avatarUrl: userData.photoURL || dicebearUrl(name),
+      dicebearSeed: name,
+      dicebearStyle: "notionists",
+      linkedUserId: uid,
+    });
+  } catch (e) {
+    console.warn("autoCreateCompanion failed:", e.message);
+  }
 }
 
 export function TripProvider({ children }) {
@@ -88,6 +108,7 @@ export function TripProvider({ children }) {
       joinCode,
       createdAt: serverTimestamp(),
     });
+    await autoCreateCompanion(ref.id, user.uid, db);
     return ref.id;
   };
 
@@ -103,6 +124,7 @@ export function TripProvider({ children }) {
     await updateDoc(doc(db, "trips", tripDoc.id), {
       memberIds: arrayUnion(user.uid),
     });
+    await autoCreateCompanion(tripDoc.id, user.uid, db);
     return tripData;
   };
 
