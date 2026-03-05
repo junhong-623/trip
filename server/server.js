@@ -489,3 +489,7 @@ app.get("/health", (req, res) => res.json({ status: "ok", storage: "cloudinary" 
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+// ─── Backend ───────────────────────────────────────────────────────────────────
+app.use("/api/admin", require("./routes/admin"));
