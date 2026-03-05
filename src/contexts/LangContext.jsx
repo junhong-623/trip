@@ -71,6 +71,8 @@ export const T = {
     owner: "Owner",
     // People
     peopleTitle: "People",
+    linked: "🔗 Linked",
+    linkedSelf: "🔗 My Companion",
     participants: "%d participant",
     participantsPlural: "%d participants",
     addPerson: "Add Person",
@@ -241,7 +243,7 @@ export const T = {
     driveFolder: "Drive Folder",
     notSet: "Not set",
     about: "About",
-    aboutText: "MateTrip — Travel Expense Tracker\nBuilt with React + Firebase + Cloudinary Drive API",
+    aboutText: "Built with React + Firebase + Cloudinary Drive API",
 
     // Install PWA
     installApp: "Add to Home Screen",
@@ -317,6 +319,8 @@ export const T = {
     youJoined: "已加入",
     owner: "启程者",
     peopleTitle: "旅伴",
+    linked: "🔗 已关联",
+    linkedSelf: "🔗 我的旅伴",
     participants: "%d 位旅伴",
     participantsPlural: "%d 位旅伴",
     addPerson: "添加旅伴",

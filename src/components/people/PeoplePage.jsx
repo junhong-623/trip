@@ -83,7 +83,8 @@ export default function PeoplePage({ toast }) {
       ) : (
         <div className="people-grid">
           {people.map(person => (
-            <div key={person.id} className="person-card card">
+            <div key={person.id}
+              className={"person-card card" + (person.linkedUserId === user?.uid ? " person-card--mine" : "")}>
               <div className="person-avatar-wrap">
                 <img
                   src={person.avatarUrl || dicebearUrl(person.name)}
@@ -95,17 +96,19 @@ export default function PeoplePage({ toast }) {
                 </div>
               </div>
               <div className="person-name">{person.name}</div>
-              {person.linkedUserId && (
-                <div style={{ fontSize: 10, color: "var(--terracotta)", marginBottom: 4 }}>
-                  {tr.linked || "🔗 已关联"}
-                </div>
-              )}
               <div className="person-actions">
                 <button className="btn btn-icon btn-sm"
                   onClick={() => { setEditPerson(person); setShowModal(true); }}>✏</button>
                 <button className="btn btn-icon btn-sm"
                   onClick={() => handleDelete(person)}>🗑</button>
               </div>
+              {person.linkedUserId && (
+                <div className="person-linked-badge">
+                  {person.linkedUserId === user?.uid
+                    ? (tr.linkedSelf || "🔗 我的旅伴")
+                    : (tr.linked || "🔗 已关联")}
+                </div>
+              )}
             </div>
           ))}
         </div>
