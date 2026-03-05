@@ -73,7 +73,10 @@ export default function TripsPage({ toast, onNavigate }) {
       const { updateDoc, doc: firestoreDoc, arrayRemove, arrayUnion } = await import("firebase/firestore");
       await updateDoc(firestoreDoc(db, "trips", trip.id), {
         createdBy: newOwnerUid,
-        memberIds: arrayUnion(user.uid),   // old owner becomes a member
+        memberIds: arrayRemove(newOwnerUid), // remove new owner from members first
+      });
+      await updateDoc(firestoreDoc(db, "trips", trip.id), {
+        memberIds: arrayUnion(user.uid),     // add old owner as member
       });
       // Update local state
       setShowMembers(prev => prev ? {
