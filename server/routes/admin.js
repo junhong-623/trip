@@ -72,17 +72,31 @@ router.delete("/user/:uid", checkSecret, async (req, res) => {
 // Body: { newPassword: "..." }
 router.post("/user/:uid/password", checkSecret, async (req, res) => {
   const { uid } = req.params;
-  const { newPassword } = req.body;
+  const { newPassword } = req.body || {};
+
+  console.log("[admin] change password for uid:", uid, "| body:", req.body);
 
   if (!newPassword || newPassword.length < 6) {
     return res.status(400).json({ error: "Password must be at least 6 characters" });
   }
 
   try {
-    await adminAuth.updateUser(uid, { password: newPassword });
-    res.json({ success: true, uid });
+    // Get current user to check providers
+    const userRecord = await adminAuth.getUser(uid);
+    const providers = userRecord.providerData.map(p => p.providerId);
+    console.log("[admin] providers for uid", uid, ":", providers);
+
+    // Update password — works for email/password users AND adds password to Google users
+    await adminAuth.updateUser(uid, {
+      password: newPassword,
+      // If Google-only user, also set email so they can use email/password login
+      ...(userRecord.email && { email: userRecord.email }),
+    });
+
+    res.json({ success: true, uid, providers });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[admin] change password error:", err.code, err.message);
+    res.status(500).json({ error: err.message, code: err.code });
   }
 });
 
