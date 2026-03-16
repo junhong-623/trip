@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLang } from "../../contexts/LangContext";
 import { addReceipt, updateReceipt } from "../../services/firestore";
 import { analyzeReceipt } from "../../services/api";
@@ -31,6 +31,33 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
   const [locating, setLocating] = useState(false);
   const [editingEatersItem, setEditingEatersItem] = useState(null);
   const [showItemEditor, setShowItemEditor] = useState(false);
+  const wrapRef = useRef(null);
+
+  // Lock background scroll — prevent touch events bleeding through to main page
+  useEffect(() => {
+    const overlay = document.querySelector(".modal-overlay");
+
+    // Block touchmove on the overlay backdrop (outside the panel)
+    const blockTouch = (e) => {
+      // Allow scrolling inside .receipt-panel, block everything else
+      if (!e.target.closest(".receipt-panel")) {
+        e.preventDefault();
+      }
+    };
+
+    overlay?.addEventListener("touchmove", blockTouch, { passive: false });
+    // Also freeze body scroll
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width    = "100%";
+
+    return () => {
+      overlay?.removeEventListener("touchmove", blockTouch);
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width    = "";
+    };
+  }, []);
 
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({
@@ -175,7 +202,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="receipt-modal-wrap" onClick={e => e.stopPropagation()}>
+      <div className="receipt-modal-wrap" ref={wrapRef} onClick={e => e.stopPropagation()}>
 
         {/* ── Main form panel ── */}
         <div className={`receipt-panel main-panel ${showItemEditor ? "slide-left" : ""}`}>

@@ -6,8 +6,8 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 600px;
-  /* Use visualViewport height so the wrap shrinks when keyboard opens */
-  height: calc(var(--viewport-height, 92vh) * 0.92);
+  /* Height set directly by useViewport.js via inline style */
+  height: 92svh;
   border-radius: 20px 20px 0 0;
   background: white;
   overflow: hidden;          /* clips panels sliding out */
@@ -24,15 +24,14 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 0 20px 16px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  touch-action: pan-y;       /* allow vertical scroll inside panel only */
+  padding: 0 20px 24px;
+  overflow-y: scroll;        /* scroll not auto — more reliable on iOS */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
   background: white;
   will-change: transform;
-  /* Extra bottom padding so last input clears keyboard */
-  padding-bottom: max(16px, env(keyboard-inset-height, 0px));
 }
 
 /* Main form: default visible, slides left when item editor opens */

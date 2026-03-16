@@ -1,5 +1,5 @@
-// useViewport.js — keeps --viewport-height CSS var in sync with visual viewport
-// This fixes iOS PWA keyboard-pushes-modal issue
+// useViewport.js — syncs visual viewport to CSS vars AND directly repositions
+// fixed modals when the iOS keyboard opens/closes
 import { useEffect } from "react";
 
 export function useViewport() {
@@ -7,12 +7,26 @@ export function useViewport() {
     const update = () => {
       const vv = window.visualViewport;
       if (!vv) return;
-      // Set CSS vars so modals can position relative to visible area
-      document.documentElement.style.setProperty("--viewport-height", `${vv.height}px`);
-      document.documentElement.style.setProperty("--viewport-offset-top", `${vv.offsetTop}px`);
+
+      const height    = vv.height;
+      const offsetTop = vv.offsetTop;
+
+      // Update CSS vars (used by modal-overlay etc)
+      document.documentElement.style.setProperty("--viewport-height",     `${height}px`);
+      document.documentElement.style.setProperty("--viewport-offset-top", `${offsetTop}px`);
+
+      // Directly reposition receipt-modal-wrap via inline style
+      // CSS vars on fixed elements are unreliable on iOS Safari when keyboard is open
+      const wrap = document.querySelector(".receipt-modal-wrap");
+      if (wrap) {
+        const maxH = Math.round(height * 0.92);
+        wrap.style.height = `${maxH}px`;
+        // Keep it pinned to the bottom of the visual viewport
+        wrap.style.bottom = "0px";
+        wrap.style.top    = "auto";
+      }
     };
 
-    // Set initial value
     update();
 
     const vv = window.visualViewport;
