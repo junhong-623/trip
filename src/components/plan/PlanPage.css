@@ -146,7 +146,9 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  height: calc(var(--viewport-height, 100dvh) - 180px);
+  /* No fixed height — let flexbox fill remaining space.
+     The parent .plan-page is display:flex flex-direction:column height:100%
+     so this naturally fills without needing a calc. */
 }
 .chat-messages {
   flex: 1;
@@ -248,6 +250,8 @@
   padding: 8px 0 0;
   border-top: 1px solid var(--sand-dark);
   flex-shrink: 0;
+  /* Prevent input bar from going under home indicator on iOS */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .chat-input {
   flex: 1;
