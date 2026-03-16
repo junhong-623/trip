@@ -377,6 +377,9 @@
   border-radius: 20px;
   overflow: hidden;
   padding: 24px 20px;
+  /* Screenshot-friendly: crisp text */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .report-header {
@@ -559,17 +562,29 @@
   display: flex;
   gap: 10px;
 }
-.btn-report-share {
+.btn-report-action {
   flex: 1;
   padding: 13px;
-  background: var(--terracotta);
-  color: white;
   border: none;
   border-radius: 14px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
   transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
-.btn-report-share:active { opacity: 0.85; }
+.btn-report-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-report-action:active:not(:disabled) { opacity: 0.82; }
+.btn-report-download {
+  background: var(--sand-dark);
+  color: var(--ink);
+  border: 1.5px solid var(--sand-deep);
+}
+.btn-report-share {
+  background: var(--terracotta);
+  color: white;
+}

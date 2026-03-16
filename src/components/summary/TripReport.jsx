@@ -427,20 +427,80 @@ export default function TripReport({ receipts, people, toast }) {
           </div>
 
           {isOwner && (
-            <div className="report-actions">
-              <button className="btn-report-share" onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title: activeTrip?.name, text: `总消费 ${formatAmount(totalSpend, currency)}` });
-                } else {
-                  toast?.show(lang === "zh" ? "截图分享给朋友吧！" : "Take a screenshot to share!", "success");
-                }
-              }}>
-                📤 {lang === "zh" ? "分享报告" : "Share Report"}
-              </button>
-            </div>
+            <ReportActions reportRef={reportRef} tripName={activeTrip?.name} lang={lang} toast={toast} />
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Report Actions (html2canvas capture) ────────────────────────────────────
+function ReportActions({ reportRef, tripName, lang, toast }) {
+  const [capturing, setCapturing] = useState(false);
+
+  const capture = async (mode) => {
+    if (!reportRef.current) return;
+    setCapturing(true);
+    try {
+      // Dynamically load html2canvas
+      const html2canvas = (await import("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js")).default;
+
+      // Temporarily add padding so edges don't clip
+      const el = reportRef.current;
+      const prevPadding = el.style.padding;
+      el.style.padding = "28px";
+
+      const canvas = await html2canvas(el, {
+        scale: 3,              // high DPI for sharp text on phone
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+
+      el.style.padding = prevPadding;
+
+      const dataUrl = canvas.toDataURL("image/png");
+      const fileName = `${(tripName || "trip").replace(/\s+/g, "-")}-report.png`;
+
+      if (mode === "download") {
+        // Download as PNG
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = fileName;
+        a.click();
+        toast?.show(lang === "zh" ? "报告已保存 ✓" : "Report saved ✓", "success");
+      } else if (mode === "share") {
+        // Convert to blob and share
+        canvas.toBlob(async (blob) => {
+          const file = new File([blob], fileName, { type: "image/png" });
+          if (navigator.canShare?.({ files: [file] })) {
+            await navigator.share({ files: [file], title: tripName || "Trip Report" });
+          } else {
+            // Fallback: open image in new tab
+            const url = URL.createObjectURL(blob);
+            window.open(url, "_blank");
+            toast?.show(lang === "zh" ? "长按图片保存" : "Long-press to save image", "success");
+          }
+        }, "image/png");
+      }
+    } catch (err) {
+      console.error("Capture error:", err);
+      toast?.show(lang === "zh" ? "截图失败，请重试" : "Capture failed, try again", "error");
+    }
+    setCapturing(false);
+  };
+
+  return (
+    <div className="report-actions">
+      <button className="btn-report-action btn-report-download"
+        onClick={() => capture("download")} disabled={capturing}>
+        {capturing ? "⏳" : "⬇️"} {lang === "zh" ? "保存图片" : "Save Image"}
+      </button>
+      <button className="btn-report-action btn-report-share"
+        onClick={() => capture("share")} disabled={capturing}>
+        {capturing ? "⏳" : "📤"} {lang === "zh" ? "分享报告" : "Share"}
+      </button>
     </div>
   );
 }
