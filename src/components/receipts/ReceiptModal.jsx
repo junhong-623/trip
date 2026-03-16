@@ -6,25 +6,21 @@ import { dicebearUrl, formatAmount, generateId, parseAmount, roundMoney } from "
 import ItemEatersModal from "./ItemEatersModal";
 import "./ReceiptModal.css";
 
-// Scroll focused input into view inside .receipt-panel (the actual scroll container)
-// receipt-modal-wrap has overflow:hidden, receipt-panel has overflow-y:auto
+// Scroll focused input into view inside .receipt-panel
+// The wrap now resizes with visualViewport when keyboard opens,
+// so we just need to ensure the input is within the (now smaller) panel.
 const scrollOnFocus = (e) => {
   const el = e.target;
   setTimeout(() => {
-    // Find closest .receipt-panel ancestor — that's the scroll container
     const panel = el.closest(".receipt-panel");
     if (!panel) return;
     const elRect    = el.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
-    // Distance input bottom is below the visible bottom of the panel
-    // Subtract extra for virtual keyboard (approx 40% of window height on mobile)
-    const keyboardHeight = window.innerHeight * 0.42;
-    const visibleBottom  = panelRect.top + (window.innerHeight - keyboardHeight);
-    const overflow = elRect.bottom - visibleBottom;
+    const overflow  = elRect.bottom - (panelRect.bottom - 24);
     if (overflow > 0) {
-      panel.scrollBy({ top: overflow + 32, behavior: "smooth" });
+      panel.scrollBy({ top: overflow + 24, behavior: "smooth" });
     }
-  }, 320);
+  }, 350); // 350ms: keyboard animation ~300ms + buffer
 };
 
 export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast }) {

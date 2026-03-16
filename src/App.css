@@ -223,6 +223,9 @@ body {
   z-index: 100;
   padding: 0;
   animation: fadeIn 0.2s ease;
+  /* Prevent touch scroll bleeding through to background page */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal-sheet {
@@ -234,6 +237,8 @@ body {
   /* Cap at 90% of the *visible* viewport height */
   max-height: calc(var(--viewport-height, 100dvh) * 0.92);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 @media (min-width: 600px) {

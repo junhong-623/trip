@@ -6,13 +6,16 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 600px;
-  height: 92vh;
+  /* Use visualViewport height so the wrap shrinks when keyboard opens */
+  height: calc(var(--viewport-height, 92vh) * 0.92);
   border-radius: 20px 20px 0 0;
   background: white;
   overflow: hidden;          /* clips panels sliding out */
   display: flex;
   flex-direction: row;
   box-shadow: 0 -4px 40px rgba(0,0,0,0.18);
+  /* Prevent scroll bleeding to background */
+  touch-action: none;
 }
 
 /* ── Each panel ───────────────────────────────────────────────────────────── */
@@ -23,9 +26,13 @@
   flex-direction: column;
   padding: 0 20px 16px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;       /* allow vertical scroll inside panel only */
   transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
   background: white;
   will-change: transform;
+  /* Extra bottom padding so last input clears keyboard */
+  padding-bottom: max(16px, env(keyboard-inset-height, 0px));
 }
 
 /* Main form: default visible, slides left when item editor opens */
