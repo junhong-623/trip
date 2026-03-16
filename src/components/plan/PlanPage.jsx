@@ -13,6 +13,20 @@ import { registerSW, subscribePush, isPushSupported } from "../../services/pushS
 
 const API = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
 
+const scrollOnFocus = (e) => {
+  const el = e.target;
+  setTimeout(() => {
+    const panel = el.closest(".plan-panel");
+    if (!panel) return;
+    const elRect    = el.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const overflow  = elRect.bottom - (panelRect.bottom - 24);
+    if (overflow > 0) {
+      panel.scrollBy({ top: overflow + 24, behavior: "smooth" });
+    }
+  }, 350); // 350ms: keyboard animation ~300ms + buffer
+};
+
 // ─── Browser notifications ────────────────────────────────────────────────────
 async function requestNotifPermission() {
   if (!("Notification" in window)) return false;
@@ -120,7 +134,7 @@ function EventModal({ event, onSave, onClose, onDelete, tr }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="plan-panel modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="modal-handle" />
         <div className="modal-header">
@@ -132,36 +146,42 @@ function EventModal({ event, onSave, onClose, onDelete, tr }) {
             <label className="form-label">{tr.eventTitle} *</label>
             <input className="form-input" value={form.title}
               onChange={e => set("title", e.target.value)}
+              onFocus={scrollOnFocus}
               placeholder="e.g. 富士山一日游" autoFocus />
           </div>
           <div className="form-group">
             <label className="form-label">{tr.eventDate} *</label>
             <input className="form-input" type="date" value={form.date}
               onChange={e => set("date", e.target.value)}
+              onFocus={scrollOnFocus}
               style={{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block"}} />
           </div>
           <div className="form-group">
             <label className="form-label">{tr.eventTime}</label>
             <input className="form-input" type="time" value={form.time}
               onChange={e => set("time", e.target.value)}
+              onFocus={scrollOnFocus}
               style={{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block"}} />
           </div>
           <div className="form-group">
             <label className="form-label">🗺 Google Maps</label>
             <input className="form-input" value={form.mapLink}
               onChange={e => set("mapLink", e.target.value)}
+              onFocus={scrollOnFocus}
               placeholder="https://maps.app.goo.gl/..." />
           </div>
           <div className="form-group">
             <label className="form-label">📍 {tr.eventPlace}</label>
             <input className="form-input" value={form.place}
               onChange={e => set("place", e.target.value)}
+              onFocus={scrollOnFocus}
               placeholder="e.g. 新宿站" />
           </div>
           <div className="form-group">
             <label className="form-label">📝 {tr.eventNotes}</label>
             <textarea className="form-input form-textarea" value={form.notes}
               onChange={e => set("notes", e.target.value)}
+              onFocus={scrollOnFocus}
               placeholder="备注…" rows={2} />
           </div>
           <div style={{display:"flex",gap:8,marginTop:4}}>
@@ -258,6 +278,32 @@ export default function PlanPage({ toast }) {
     }
   }, [messages, activeTab]);
 
+   // Lock background scroll — prevent touch events bleeding through to main page
+  useEffect(() => {
+    const overlay = document.querySelector(".modal-overlay");
+
+    // Block touchmove on the overlay backdrop (outside the panel)
+    const blockTouch = (e) => {
+      // Allow scrolling inside .receipt-panel, block everything else
+      if (!e.target.closest(".receipt-panel")) {
+        e.preventDefault();
+      }
+    };
+
+    overlay?.addEventListener("touchmove", blockTouch, { passive: false });
+      // Also freeze body scroll
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width    = "100%";
+
+      return () => {
+        overlay?.removeEventListener("touchmove", blockTouch);
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.width    = "";
+      };
+    }, []);
+
   const handleSaveEvent = async (form) => {
     try {
       if (editEvent) {
@@ -332,7 +378,7 @@ export default function PlanPage({ toast }) {
   return (
     <div className="plan-page">
       {/* Sub-tabs */}
-      <div className="plan-tabs">
+      <div className="plan-panel plan-tabs">
         <button className={`plan-tab ${activeTab === "schedule" ? "active" : ""}`}
           onClick={() => setActiveTab("schedule")}>
           📅 {tr.schedule}
