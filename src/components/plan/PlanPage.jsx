@@ -16,16 +16,44 @@ const API = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").repla
 const scrollOnFocus = (e) => {
   const el = e.target;
   setTimeout(() => {
-    const panel = el.closest(".plan-panel");
-    if (!panel) return;
+    // .modal-sheet is the actual overflow-y:auto container
+    const sheet = el.closest(".modal-sheet");
+    if (!sheet) return;
     const elRect    = el.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    const overflow  = elRect.bottom - (panelRect.bottom - 24);
+    const sheetRect = sheet.getBoundingClientRect();
+    const overflow  = elRect.bottom - (sheetRect.bottom - 16);
     if (overflow > 0) {
-      panel.scrollBy({ top: overflow + 24, behavior: "smooth" });
+      sheet.scrollBy({ top: overflow + 24, behavior: "smooth" });
     }
-  }, 350); // 350ms: keyboard animation ~300ms + buffer
+  }, 350);
 };
+
+// Reposition modal-sheet when visual viewport changes (keyboard opens/closes)
+// Call this inside EventModal via useEffect
+function useModalKeyboard() {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const sheet = document.querySelector(".plan-panel .modal-sheet");
+      if (!sheet) return;
+      // Pin sheet bottom to visual viewport bottom
+      const bottom = window.innerHeight - (vv.offsetTop + vv.height);
+      sheet.style.marginBottom = `${Math.max(0, bottom)}px`;
+      sheet.style.maxHeight    = `${vv.height * 0.92}px`;
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      // Reset on unmount
+      const sheet = document.querySelector(".plan-panel .modal-sheet");
+      if (sheet) { sheet.style.marginBottom = ""; sheet.style.maxHeight = ""; }
+    };
+  }, []);
+}
 
 // ─── Browser notifications ────────────────────────────────────────────────────
 async function requestNotifPermission() {
@@ -125,6 +153,7 @@ function EventModal({ event, onSave, onClose, onDelete, tr }) {
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  useModalKeyboard(); // reposition sheet when keyboard opens
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.date) return;
