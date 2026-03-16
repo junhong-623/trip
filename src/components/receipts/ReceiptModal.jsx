@@ -6,15 +6,30 @@ import { dicebearUrl, formatAmount, generateId, parseAmount, roundMoney } from "
 import ItemEatersModal from "./ItemEatersModal";
 import "./ReceiptModal.css";
 
-
-  const scrollOnFocus = (e) => {
-    const el = e.target;
-    setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
-  };
+// Scroll focused input into view inside .receipt-panel (the actual scroll container)
+// receipt-modal-wrap has overflow:hidden, receipt-panel has overflow-y:auto
+const scrollOnFocus = (e) => {
+  const el = e.target;
+  setTimeout(() => {
+    // Find closest .receipt-panel ancestor — that's the scroll container
+    const panel = el.closest(".receipt-panel");
+    if (!panel) return;
+    const elRect    = el.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    // Distance input bottom is below the visible bottom of the panel
+    // Subtract extra for virtual keyboard (approx 40% of window height on mobile)
+    const keyboardHeight = window.innerHeight * 0.42;
+    const visibleBottom  = panelRect.top + (window.innerHeight - keyboardHeight);
+    const overflow = elRect.bottom - visibleBottom;
+    if (overflow > 0) {
+      panel.scrollBy({ top: overflow + 32, behavior: "smooth" });
+    }
+  }, 320);
+};
 
 export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast }) {
   const { tr, t } = useLang();
-  const isExisting = !!receipt?.id; // lock financial fields for existing receipts
+  const isExisting = !!receipt?.id;
   const [ocrLoading, setOcrLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -56,14 +71,13 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
   const totalAmount = parseAmount(form.totalAmount);
   const itemsTotal = roundMoney(items.reduce((s, i) => s + parseAmount(i.price), 0));
   const itemsOverBudget = totalAmount > 0 && itemsTotal > totalAmount + 0.01;
-  // If items exist, they must sum exactly to totalAmount
   const itemsMismatch = !isExisting && items.length > 0 && totalAmount > 0 && Math.abs(itemsTotal - totalAmount) > 0.01;
 
   const addItem = useCallback(() => {
     setItems(prev => [...prev, { id: generateId(), name: "", price: "", eaters: [] }]);
   }, []);
   const removeItem = useCallback((id) => { setItems(prev => prev.filter(i => i.id !== id)); }, []);
-  const updateItemName = useCallback((id, v) => { setItems(prev => prev.map(i => i.id === id ? { ...i, name: v } : i)); }, []);
+  const updateItemName  = useCallback((id, v) => { setItems(prev => prev.map(i => i.id === id ? { ...i, name: v } : i)); }, []);
   const updateItemPrice = useCallback((id, v) => { setItems(prev => prev.map(i => i.id === id ? { ...i, price: v } : i)); }, []);
   const updateItemEaters = useCallback((id, eaters) => { setItems(prev => prev.map(i => i.id === id ? { ...i, eaters } : i)); }, []);
 
@@ -117,7 +131,6 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
         ...form,
         totalAmount: parseAmount(form.totalAmount),
         items: items.map(i => ({ ...i, price: parseAmount(i.price) })),
-
       };
       if (receipt) {
         await updateReceipt(tripId, receipt.id, data);
@@ -142,22 +155,19 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
         const { latitude, longitude } = pos.coords;
         const link = `https://www.google.com/maps?q=${latitude},${longitude}`;
         set("googleMapLink", link);
-        // Reverse geocode via OpenStreetMap Nominatim (free, no key needed)
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
             { headers: { "Accept-Language": "zh-CN,zh,en", "User-Agent": "MateTrip/1.0" } }
           );
           const data = await res.json();
-          // Pick the most useful name: shop/amenity > road+house > suburb
           const a = data.address || {};
           const placeName =
             a.shop || a.restaurant || a.cafe || a.amenity || a.tourism ||
             a.leisure || a.building ||
             (a.road ? (a.house_number ? `${a.road} ${a.house_number}` : a.road) : null) ||
             a.suburb || a.neighbourhood ||
-            data.display_name?.split(",")[0] ||
-            "";
+            data.display_name?.split(",")[0] || "";
           if (placeName) set("locationName", placeName);
         } catch {}
         setLocating(false);
@@ -208,18 +218,18 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               <div className="form-group">
                 <label className="form-label">{tr.restaurantPlace}</label>
                 <input className="form-input" value={form.restaurantName}
-                  onChange={e => set("restaurantName", e.target.value)} 
+                  onChange={e => set("restaurantName", e.target.value)}
                   onFocus={scrollOnFocus}
                   placeholder="Ichiran Ramen" />
               </div>
 
-              {/* FIX: date on its own row (smaller), amount full width below */}
               <div className="form-group">
                 <label className="form-label">{tr.date}</label>
                 <input className="form-input date-input-compact" type="date" value={form.date}
-                  onChange={e => set("date", e.target.value)} />
+                  onChange={e => set("date", e.target.value)}
                   onFocus={scrollOnFocus} />
               </div>
+
               <div className="form-group">
                 <label className="form-label">{t(tr.total, currency)}</label>
                 <input className="form-input" type="number" step="0.01"
@@ -236,7 +246,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
 
             <div className="form-section">
               <div className="section-title">{tr.whoPaid}</div>
-              {isExisting && <div className="form-hint" style={{marginBottom:8}}>账单已建立，付款人不可更改</div>}
+              {isExisting && <div className="form-hint" style={{ marginBottom: 8 }}>账单已建立，付款人不可更改</div>}
               <div className="payer-row">
                 {people.map(p => (
                   <button key={p.id} type="button"
@@ -256,7 +266,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                 <div className="section-title" style={{ marginBottom: 0 }}>{tr.items}</div>
                 {!isExisting && (
                   <button type="button"
-                    className={`btn btn-secondary btn-sm items-edit-btn`}
+                    className="btn btn-secondary btn-sm items-edit-btn"
                     onClick={() => {
                       if (!totalAmount) { toast.show("请先填写总金额", "error"); return; }
                       setShowItemEditor(true);
@@ -291,7 +301,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                       </div>
                     </div>
                   ))}
-                  <div className={`items-total-row ${itemsOverBudget ? "over-budget" : itemsMismatch ? "over-budget" : ""}`}>
+                  <div className={`items-total-row ${itemsOverBudget || itemsMismatch ? "over-budget" : ""}`}>
                     <span>{tr.itemsTotal}</span>
                     <span className="amount">{formatAmount(itemsTotal, currency)}</span>
                     {totalAmount > 0 && (
@@ -311,7 +321,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             {items.length === 0 && (
               <div className="form-section">
                 <div className="section-title">{tr.splitAmong}</div>
-                {isExisting && <div className="form-hint" style={{marginBottom:8}}>账单已建立，分摊不可更改</div>}
+                {isExisting && <div className="form-hint" style={{ marginBottom: 8 }}>账单已建立，分摊不可更改</div>}
                 <div className="participants-row">
                   <button type="button"
                     className={`chip ${allSelected ? "selected" : ""}`}
@@ -404,7 +414,8 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
 
           <div style={{ padding: "12px 0 4px", display: "flex", gap: 10 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>{tr.cancel}</button>
-            <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleSave} disabled={saving || itemsOverBudget || itemsMismatch}>
+            <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleSave}
+              disabled={saving || itemsOverBudget || itemsMismatch}>
               {saving ? tr.saving : receipt ? tr.saveChanges : tr.saveReceipt}
             </button>
           </div>
@@ -480,7 +491,8 @@ function ItemEditorRow({ item, people, currency, totalAmount, itemsTotal, onName
         <input className="form-input" value={item.name}
           onChange={e => onNameChange(item.id, e.target.value)}
           onFocus={scrollOnFocus}
-          placeholder="Item name" style={{ flex: 1 }} />
+          placeholder="Item name"
+          style={{ flex: 1 }} />
         <div className="item-price-wrap">
           <input className={`form-input item-price-field ${isOver ? "price-over" : ""}`}
             type="number" step="0.01" inputMode="decimal"
