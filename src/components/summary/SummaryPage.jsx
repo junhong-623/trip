@@ -8,6 +8,7 @@ import {
 } from "../../services/firestore";
 import { formatAmount, formatDateShort, dicebearUrl, parseAmount, roundMoney } from "../../utils/utils";
 import "./SummaryPage.css";
+import TripReport from "./TripReport";
 
 // ─── Compute per-receipt what each person owes the payer ──────────────────────
 function computeReceiptDebts(receipt, people) {
@@ -65,6 +66,7 @@ export default function SummaryPage({ toast }) {
   const [people, setPeople] = useState([]);
   const [settlements, setSettlements] = useState([]);
   const [expandedReceipt, setExpandedReceipt] = useState(null);
+  const [summaryTab, setSummaryTab] = useState("settle"); // settle | report
 
   useEffect(() => {
     if (!activeTrip?.id) return;
@@ -161,6 +163,40 @@ export default function SummaryPage({ toast }) {
     <div>
       <h1 className="page-title">{tr.summaryTitle}</h1>
       <p className="page-subtitle">{activeTrip.name}</p>
+
+      {/* Tab switcher */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button
+          onClick={() => setSummaryTab("settle")}
+          style={{
+            flex: 1, padding: "9px 8px", borderRadius: 12, border: "2px solid",
+            borderColor: summaryTab === "settle" ? "var(--terracotta)" : "var(--sand-dark)",
+            background: summaryTab === "settle" ? "var(--terracotta-pale)" : "white",
+            color: summaryTab === "settle" ? "var(--terracotta)" : "var(--ink-muted)",
+            fontWeight: summaryTab === "settle" ? 700 : 500,
+            fontSize: 13, cursor: "pointer", fontFamily: "var(--font-body)",
+          }}>
+          💰 {tr.whoOwesWhom || "结算"}
+        </button>
+        <button
+          onClick={() => setSummaryTab("report")}
+          style={{
+            flex: 1, padding: "9px 8px", borderRadius: 12, border: "2px solid",
+            borderColor: summaryTab === "report" ? "var(--terracotta)" : "var(--sand-dark)",
+            background: summaryTab === "report" ? "var(--terracotta-pale)" : "white",
+            color: summaryTab === "report" ? "var(--terracotta)" : "var(--ink-muted)",
+            fontWeight: summaryTab === "report" ? 700 : 500,
+            fontSize: 13, cursor: "pointer", fontFamily: "var(--font-body)",
+          }}>
+          📊 {tr.tripReport || "旅途报告"}
+        </button>
+      </div>
+
+      {summaryTab === "report" && (
+        <TripReport receipts={receipts} people={people} toast={toast} />
+      )}
+
+      {summaryTab === "settle" && <>
 
       {/* Trip total */}
       <div className="summary-total-card card" style={{ marginBottom: 16 }}>
@@ -313,6 +349,8 @@ export default function SummaryPage({ toast }) {
           })}
         </div>
       )}
+    </>
+    }
     </div>
   );
 }
