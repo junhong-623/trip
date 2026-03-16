@@ -16,14 +16,17 @@ export function useViewport() {
       document.documentElement.style.setProperty("--viewport-offset-top", `${offsetTop}px`);
 
       // Directly reposition receipt-modal-wrap via inline style
-      // CSS vars on fixed elements are unreliable on iOS Safari when keyboard is open
+      // Must use top + height (not bottom) because bottom is relative to
+      // layout viewport which doesn't shrink when keyboard opens on iOS
       const wrap = document.querySelector(".receipt-modal-wrap");
       if (wrap) {
-        const maxH = Math.round(height * 0.92);
-        wrap.style.height = `${maxH}px`;
-        // Keep it pinned to the bottom of the visual viewport
-        wrap.style.bottom = "0px";
-        wrap.style.top    = "auto";
+        // vv.height is already the visible area ABOVE the keyboard
+        // vv.offsetTop is how far down the visual viewport has scrolled
+        const wrapH = Math.round(height * 0.92);
+        const wrapTop = offsetTop + height - wrapH;
+        wrap.style.top    = `${wrapTop}px`;
+        wrap.style.height = `${wrapH}px`;
+        wrap.style.bottom = "auto";
       }
     };
 
