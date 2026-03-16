@@ -6,6 +6,12 @@ import { dicebearUrl, formatAmount, generateId, parseAmount, roundMoney } from "
 import ItemEatersModal from "./ItemEatersModal";
 import "./ReceiptModal.css";
 
+
+  const scrollOnFocus = (e) => {
+    const el = e.target;
+    setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+  };
+
 export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast }) {
   const { tr, t } = useLang();
   const isExisting = !!receipt?.id; // lock financial fields for existing receipts
@@ -202,7 +208,9 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               <div className="form-group">
                 <label className="form-label">{tr.restaurantPlace}</label>
                 <input className="form-input" value={form.restaurantName}
-                  onChange={e => set("restaurantName", e.target.value)} placeholder="Ichiran Ramen" />
+                  onChange={e => set("restaurantName", e.target.value)} 
+                  onFocus={scrollOnFocus}
+                  placeholder="Ichiran Ramen" />
               </div>
 
               {/* FIX: date on its own row (smaller), amount full width below */}
@@ -210,6 +218,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                 <label className="form-label">{tr.date}</label>
                 <input className="form-input date-input-compact" type="date" value={form.date}
                   onChange={e => set("date", e.target.value)} />
+                  onFocus={scrollOnFocus} />
               </div>
               <div className="form-group">
                 <label className="form-label">{t(tr.total, currency)}</label>
@@ -217,6 +226,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                   inputMode="decimal"
                   value={form.totalAmount}
                   onChange={e => !isExisting && set("totalAmount", e.target.value)}
+                  onFocus={scrollOnFocus}
                   placeholder="0.00"
                   disabled={isExisting}
                   style={isExisting ? { opacity: 0.6, cursor: "not-allowed" } : {}} />
@@ -338,6 +348,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
                 <input
                   className="tags-input"
                   placeholder={form.tags.length === 0 ? tr.tagPlaceholder : "+"}
+                  onFocus={scrollOnFocus}
                   onKeyDown={e => {
                     if ((e.key === "Enter" || e.key === ",") && e.target.value.trim()) {
                       e.preventDefault();
@@ -374,6 +385,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
               </div>
               <input className="form-input" value={form.googleMapLink}
                 onChange={e => set("googleMapLink", e.target.value)}
+                onFocus={scrollOnFocus}
                 placeholder="https://maps.app.goo.gl/..."
                 style={{ fontSize: 13 }} />
               {form.googleMapLink && (
@@ -467,12 +479,14 @@ function ItemEditorRow({ item, people, currency, totalAmount, itemsTotal, onName
       <div className="item-editor-fields">
         <input className="form-input" value={item.name}
           onChange={e => onNameChange(item.id, e.target.value)}
+          onFocus={scrollOnFocus}
           placeholder="Item name" style={{ flex: 1 }} />
         <div className="item-price-wrap">
           <input className={`form-input item-price-field ${isOver ? "price-over" : ""}`}
             type="number" step="0.01" inputMode="decimal"
             value={item.price}
             onChange={e => onPriceChange(item.id, e.target.value)}
+            onFocus={scrollOnFocus}
             placeholder="0.00" />
           {isOver && <span className="price-over-hint">Over</span>}
         </div>
