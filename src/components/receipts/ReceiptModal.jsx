@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLang } from "../../contexts/LangContext";
+import { useAppConfig } from "../../hooks/useAppConfig";
 import { addReceipt, updateReceipt } from "../../services/firestore";
 import { analyzeReceipt } from "../../services/api";
 import { dicebearUrl, formatAmount, generateId, parseAmount, roundMoney } from "../../utils/utils";
@@ -23,8 +24,9 @@ const scrollOnFocus = (e) => {
   }, 350); // 350ms: keyboard animation ~300ms + buffer
 };
 
-export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast, allTags = [] }) {
+export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast }) {
   const { tr, t } = useLang();
+  const { ocrEnabled } = useAppConfig();
   const isExisting = !!receipt?.id;
   const [ocrLoading, setOcrLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -212,7 +214,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             <button className="btn btn-icon" onClick={onClose}>✕</button>
           </div>
 
-          {!receipt && (
+          {!receipt && ocrEnabled && (
             <div className="ocr-banner">
               <div className="ocr-banner-text">
                 <span className="ocr-icon">📷</span>
@@ -229,7 +231,7 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
             </div>
           )}
 
-          {ocrLoading && (
+          {ocrLoading && ocrEnabled && (
             <div className="ocr-loading">
               <div className="loading-spinner" />
               <span>{tr.analyzingText}</span>
@@ -370,19 +372,6 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
 
             <div className="form-section">
               <div className="section-title">{tr.receiptTags}</div>
-
-              {/* Preset suggestions — existing tags from this trip */}
-              {allTags.length > 0 && (
-                <div className="tag-presets">
-                  {allTags.filter(t => !form.tags.includes(t)).map(tag => (
-                    <button key={tag} type="button" className="tag-preset-btn"
-                      onClick={() => set("tags", [...form.tags, tag])}>
-                      + {tag}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               <div className="tags-input-wrap">
                 {form.tags.map((tag, i) => (
                   <span key={i} className="receipt-tag">

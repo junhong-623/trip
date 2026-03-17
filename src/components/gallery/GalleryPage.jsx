@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTrip } from "../../contexts/TripContext";
 import { useLang } from "../../contexts/LangContext";
+import { useAppConfig } from "../../hooks/useAppConfig";
 import { subscribePhotos, addPhoto, deletePhoto } from "../../services/firestore";
 import { uploadToDrive, deleteFromDrive } from "../../services/api";
 import { formatDateShort } from "../../utils/utils";
@@ -23,6 +24,7 @@ function getVideoThumbnail(videoUrl) {
 export default function GalleryPage({ toast }) {
   const { activeTrip } = useTrip();
   const { tr, t } = useLang();
+  const { photosEnabled, photosMaxPerTrip } = useAppConfig();
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(null); // index into photos array
@@ -71,6 +73,12 @@ export default function GalleryPage({ toast }) {
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Enforce max photos limit set by admin
+    if (photos.length >= photosMaxPerTrip) {
+      toast.show(`最多 ${photosMaxPerTrip} 张媒体 · 已达上限`, "error");
+      e.target.value = "";
+      return;
+    }
 
     // Video size check
     if (isVideo(file) && file.size > MAX_VIDEO_MB * 1024 * 1024) {
@@ -165,7 +173,7 @@ export default function GalleryPage({ toast }) {
 
   if (!activeTrip) return (
     <div className="empty-state">
-      <div className="empty-state-icon"><img src="/trip/icons/icon-192.png" alt="MateTrip" style={{width:64,height:64,borderRadius:16,opacity:0.85}} /></div>
+      <div className="empty-state-icon">✈️</div>
       <div className="empty-state-title">{tr.noTripSelected}</div>
     </div>
   );
@@ -182,10 +190,16 @@ export default function GalleryPage({ toast }) {
           <h1 className="page-title">{tr.galleryTitle}</h1>
           <p className="page-subtitle">{countLabel}</p>
         </div>
-        <label className="btn btn-primary" style={{ cursor: "pointer" }}>
-          {tr.uploadPhoto}
-          <input type="file" accept="image/*,video/*" onChange={handleFileSelect} style={{ display: "none" }} />
-        </label>
+        {photosEnabled ? (
+          <label className="btn btn-primary" style={{ cursor: "pointer" }}>
+            {tr.uploadPhoto}
+            <input type="file" accept="image/*,video/*" onChange={handleFileSelect} style={{ display: "none" }} />
+          </label>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--ink-muted)", background: "var(--sand)", borderRadius: 10, padding: "8px 12px" }}>
+            🔒 {tr.photosDisabled || "照片功能未开放"}
+          </div>
+        )}
       </div>
 
       {photos.length > 0 && (

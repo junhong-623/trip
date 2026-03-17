@@ -5,6 +5,7 @@ import { TripProvider } from "./contexts/TripContext";
 import { LangProvider } from "./contexts/LangContext";
 import LoginPage from "./components/LoginPage";
 import MainLayout from "./components/MainLayout";
+import { AppConfigProvider } from "./hooks/useAppConfig";
 import "./App.css";
 
 function AppContent() {
@@ -31,8 +32,10 @@ function AppContent() {
 
   return (
     <TripProvider>
-      <MainLayout />
-    </TripProvider>
+      <AppConfigProvider>
+        <MainLayout />
+      </AppConfigProvider>
+  </TripProvider>
   );
 }
 

@@ -9,6 +9,7 @@ import {
 } from "../../services/firestore";
 import "./PlanPage.css";
 import { dicebearUrl } from "../../utils/utils";
+import { useAppConfig } from "../../hooks/useAppConfig";
 import { registerSW, subscribePush, isPushSupported } from "../../services/pushService";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
@@ -236,7 +237,13 @@ export default function PlanPage({ toast }) {
   const { activeTrip } = useTrip();
   const { user } = useAuth();
   const { tr } = useLang();
+  const { chatEnabled } = useAppConfig();
   const [activeTab, setActiveTab] = useState("schedule");
+
+  // Reset to schedule if chat gets disabled
+  useEffect(() => {
+    if (!chatEnabled && activeTab === "chat") setActiveTab("schedule");
+  }, [chatEnabled]);
 
   const markRead = () => {
     if (!activeTrip?.id) return;
@@ -412,7 +419,7 @@ export default function PlanPage({ toast }) {
           onClick={() => setActiveTab("schedule")}>
           📅 {tr.schedule}
         </button>
-        <button className={`plan-tab ${activeTab === "chat" ? "active" : ""}`}
+        {chatEnabled && <button className={`plan-tab ${activeTab === "chat" ? "active" : ""}`}
           onClick={() => { setActiveTab("chat"); markRead(); }}>
           💬 {tr.chat}
           {(() => {
@@ -424,7 +431,7 @@ export default function PlanPage({ toast }) {
               ? <span className="chat-badge">{unread}</span>
               : null;
           })()}
-        </button>
+        </button>}
       </div>
 
       {/* ── Schedule Tab ── */}
@@ -519,7 +526,7 @@ export default function PlanPage({ toast }) {
       )}
 
       {/* ── Chat Tab ── */}
-      {activeTab === "chat" && (
+      {activeTab === "chat" && chatEnabled && (
         <div className="chat-content">
           {/* Notification permission banner */}
           {!notifEnabled && Notification?.permission !== "denied" && (
