@@ -74,8 +74,9 @@ export default function GalleryPage({ toast }) {
     const file = e.target.files?.[0];
     if (!file) return;
     // Enforce max photos limit set by admin
-    if (photos.length >= photosMaxPerTrip) {
-      toast.show(`最多 ${photosMaxPerTrip} 张媒体 · 已达上限`, "error");
+    const maxPhotos = photosMaxPerTrip || 5;
+    if (photos.length >= maxPhotos) {
+      toast.show(`最多 ${maxPhotos} 张媒体 · 已达上限`, "error");
       e.target.value = "";
       return;
     }
@@ -249,10 +250,12 @@ export default function GalleryPage({ toast }) {
           <div className="empty-state-icon">📸</div>
           <div className="empty-state-title">{tr.noPhotosYet}</div>
           <div className="empty-state-text">{tr.preserveMemories}</div>
-          <label className="btn btn-primary" style={{ marginTop: 16, cursor: "pointer" }}>
-            {tr.uploadFirstPhoto}
-            <input type="file" accept="image/*,video/*" onChange={handleFileSelect} style={{ display: "none" }} />
-          </label>
+          {photosEnabled && (
+            <label className="btn btn-primary" style={{ marginTop: 16, cursor: "pointer" }}>
+              {tr.uploadFirstPhoto}
+              <input type="file" accept="image/*,video/*" onChange={handleFileSelect} style={{ display: "none" }} />
+            </label>
+          )}
         </div>
       ) : (
         <div className="photo-grid">
