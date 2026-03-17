@@ -1,8 +1,3 @@
-// useAppConfig.js
-// Reads feature flags from the active trip's `features` field.
-// Admin sets these per-trip from the admin TripModal.
-// All features default to DISABLED until admin enables them.
-
 import { useContext, createContext, useState, useEffect } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../services/firebase";
@@ -23,18 +18,35 @@ export function AppConfigProvider({ children }) {
 
   useEffect(() => {
     if (!activeTrip?.id) {
+      console.log("[AppConfig] no activeTrip, using defaults:", DEFAULT);
       setConfig(DEFAULT);
       return;
     }
-    // Live listener — updates instantly when admin toggles in the backend
+
+    console.log("[AppConfig] subscribing to trip:", activeTrip.id);
+
     const unsub = onSnapshot(
       doc(db, "trips", activeTrip.id),
       (snap) => {
-        const features = snap.exists() ? (snap.data().features || {}) : {};
-        setConfig({ ...DEFAULT, ...features });
+        if (snap.exists()) {
+          const data = snap.data();
+          const features = data.features || {};
+          console.log("[AppConfig] trip doc received, features field:", features);
+          console.log("[AppConfig] full trip data keys:", Object.keys(data));
+          const merged = { ...DEFAULT, ...features };
+          console.log("[AppConfig] final config:", merged);
+          setConfig(merged);
+        } else {
+          console.log("[AppConfig] trip doc does not exist, using defaults");
+          setConfig(DEFAULT);
+        }
       },
-      () => setConfig(DEFAULT)
+      (err) => {
+        console.error("[AppConfig] onSnapshot error:", err);
+        setConfig(DEFAULT);
+      }
     );
+
     return unsub;
   }, [activeTrip?.id]);
 
