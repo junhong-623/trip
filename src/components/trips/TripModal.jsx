@@ -5,6 +5,43 @@ import { toInputDate } from "../../utils/utils";
 const CURRENCIES = ["USD","EUR","GBP","JPY","CNY","TWD","HKD","SGD","AUD","CAD","KRW","THB","MYR"];
 const EMOJIS = ["🌍","🗺","✈️","🏖","🏔","🌸","🗼","🏰","🌴","🎌","🧳","🌊","🏕","🎢"];
 
+
+// Pin modal-sheet to visual viewport when keyboard opens
+function useModalKeyboard() {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const sheet = document.querySelector(".modal-overlay .modal-sheet");
+      if (!sheet) return;
+      const bottom = window.innerHeight - (vv.offsetTop + vv.height);
+      sheet.style.marginBottom = `${Math.max(0, bottom)}px`;
+      sheet.style.maxHeight    = `${vv.height * 0.92}px`;
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      const sheet = document.querySelector(".modal-overlay .modal-sheet");
+      if (sheet) { sheet.style.marginBottom = ""; sheet.style.maxHeight = ""; }
+    };
+  }, []);
+}
+
+const scrollOnFocus = (e) => {
+  const el = e.target;
+  setTimeout(() => {
+    const sheet = el.closest(".modal-sheet");
+    if (!sheet) return;
+    const elRect    = el.getBoundingClientRect();
+    const sheetRect = sheet.getBoundingClientRect();
+    const overflow  = elRect.bottom - (sheetRect.bottom - 16);
+    if (overflow > 0) sheet.scrollBy({ top: overflow + 24, behavior: "smooth" });
+  }, 350);
+};
+
 export default function TripModal({ trip, onSave, onClose }) {
   const { tr } = useLang();
   const [form, setForm] = useState({
@@ -27,6 +64,7 @@ export default function TripModal({ trip, onSave, onClose }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const [saving, setSaving] = useState(false);
+  useModalKeyboard();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,16 +126,16 @@ export default function TripModal({ trip, onSave, onClose }) {
 
           <div className="form-group">
             <label className="form-label">{tr.tripName} *</label>
-            <input className="form-input" required value={form.name} onChange={e => set("name", e.target.value)} placeholder="Japan Spring 2025" />
+            <input className="form-input" required value={form.name} onChange={e => set("name", e.target.value)} onFocus={scrollOnFocus} placeholder="Japan Spring 2025" />
           </div>
 
           <div className="form-group">
             <label className="form-label">{tr.startDate}</label>
-            <input className="form-input" type="date" value={form.startDate} onChange={e => set("startDate", e.target.value)} />
+            <input className="form-input" type="date" value={form.startDate} onChange={e => set("startDate", e.target.value)} onFocus={scrollOnFocus} />
           </div>
           <div className="form-group">
             <label className="form-label">{tr.endDate}</label>
-            <input className="form-input" type="date" value={form.endDate} onChange={e => set("endDate", e.target.value)} />
+            <input className="form-input" type="date" value={form.endDate} onChange={e => set("endDate", e.target.value)} onFocus={scrollOnFocus} />
           </div>
 
           <div className="form-group">
@@ -110,7 +148,7 @@ export default function TripModal({ trip, onSave, onClose }) {
 
           <div className="form-group">
             <label className="form-label">{tr.driveFolderID} <span style={{color:"var(--ink-muted)",fontWeight:400}}>({tr.optional || "optional"})</span></label>
-            <input className="form-input" value={form.driveFolderId} onChange={e => set("driveFolderId", e.target.value)} placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs" />
+            <input className="form-input" value={form.driveFolderId} onChange={e => set("driveFolderId", e.target.value)} onFocus={scrollOnFocus} placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs" />
             <p className="form-hint">{tr.driveFolderHint}</p>
           </div>
 

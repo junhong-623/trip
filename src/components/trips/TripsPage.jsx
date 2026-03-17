@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { collection, doc, getDocs, getDoc } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import { useTrip } from "../../contexts/TripContext";
@@ -7,6 +7,32 @@ import { useLang } from "../../contexts/LangContext";
 import { formatDate, dicebearUrl } from "../../utils/utils";
 import TripModal from "./TripModal";
 import "./TripsPage.css";
+
+
+// Pin .modal-sheet to visual viewport when keyboard opens
+function useModalKeyboard(active) {
+  useEffect(() => {
+    if (!active) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const sheet = document.querySelector(".modal-overlay .modal-sheet");
+      if (!sheet) return;
+      const bottom = window.innerHeight - (vv.offsetTop + vv.height);
+      sheet.style.marginBottom = `${Math.max(0, bottom)}px`;
+      sheet.style.maxHeight    = `${vv.height * 0.92}px`;
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      const sheet = document.querySelector(".modal-overlay .modal-sheet");
+      if (sheet) { sheet.style.marginBottom = ""; sheet.style.maxHeight = ""; }
+    };
+  }, [active]);
+}
 
 export default function TripsPage({ toast, onNavigate }) {
   const { trips, activeTrip, loading, selectTrip, createTrip, updateTrip, deleteTrip, joinTrip, leaveTrip } = useTrip();
@@ -17,6 +43,7 @@ export default function TripsPage({ toast, onNavigate }) {
   const [showJoin, setShowJoin] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
+  useModalKeyboard(showJoin || showModal);
   const [showMembers, setShowMembers] = useState(null);
   const [memberProfiles, setMemberProfiles] = useState([]);
   const [creatorProfile, setCreatorProfile] = useState(null);
@@ -373,7 +400,7 @@ export default function TripsPage({ toast, onNavigate }) {
                   maxLength={6}
                   autoFocus
                   style={{letterSpacing:"0.2em",fontWeight:600,fontSize:18,textAlign:"center"}}
-                  onFocus={e => setTimeout(() => e.target.scrollIntoView({ behavior: "smooth", block: "center" }), 300)}
+                  onFocus={e => { const el = e.target; setTimeout(() => { const sheet = el.closest(".modal-sheet"); if (sheet) { const r = el.getBoundingClientRect(), sr = sheet.getBoundingClientRect(), ov = r.bottom - (sr.bottom - 16); if (ov > 0) sheet.scrollBy({ top: ov + 24, behavior: "smooth" }); } }, 350); }}
                   onKeyDown={e => e.key === "Enter" && handleJoin()}
                 />
               </div>

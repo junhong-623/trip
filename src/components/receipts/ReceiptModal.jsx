@@ -23,7 +23,7 @@ const scrollOnFocus = (e) => {
   }, 350); // 350ms: keyboard animation ~300ms + buffer
 };
 
-export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast }) {
+export default function ReceiptModal({ receipt, people, tripId, currency, driveFolderId, onClose, toast, allTags = [] }) {
   const { tr, t } = useLang();
   const isExisting = !!receipt?.id;
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -370,6 +370,19 @@ export default function ReceiptModal({ receipt, people, tripId, currency, driveF
 
             <div className="form-section">
               <div className="section-title">{tr.receiptTags}</div>
+
+              {/* Preset suggestions — existing tags from this trip */}
+              {allTags.length > 0 && (
+                <div className="tag-presets">
+                  {allTags.filter(t => !form.tags.includes(t)).map(tag => (
+                    <button key={tag} type="button" className="tag-preset-btn"
+                      onClick={() => set("tags", [...form.tags, tag])}>
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="tags-input-wrap">
                 {form.tags.map((tag, i) => (
                   <span key={i} className="receipt-tag">

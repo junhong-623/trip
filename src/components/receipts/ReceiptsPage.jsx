@@ -106,6 +106,7 @@ export default function ReceiptsPage({ toast }) {
           driveFolderId={activeTrip.driveFolderId}
           onClose={() => { setShowModal(false); setEditReceipt(null); }}
           toast={toast}
+          allTags={allTags}
         />
       )}
     </div>

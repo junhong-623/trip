@@ -372,3 +372,30 @@
   flex: 1;
 }
 .tags-input::placeholder { color: var(--ink-muted); opacity: 0.7; }
+
+/* ── Tag Presets ─────────────────────────────────────────────────────────── */
+.tag-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.tag-preset-btn {
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1.5px dashed var(--sand-deep);
+  background: white;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tag-preset-btn:hover, .tag-preset-btn:active {
+  border-color: var(--terracotta);
+  background: var(--terracotta-pale);
+  color: var(--terracotta);
+  border-style: solid;
+}
