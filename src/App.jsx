@@ -31,10 +31,10 @@ function AppContent() {
   if (!user) return <LoginPage />;
 
   return (
-    <TripProvider>
-      <AppConfigProvider>
-        <MainLayout />
-      </AppConfigProvider>
+  <TripProvider>
+    <AppConfigProvider>
+      <MainLayout />
+    </AppConfigProvider>
   </TripProvider>
   );
 }

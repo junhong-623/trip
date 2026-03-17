@@ -3,6 +3,8 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useTrip } from "../contexts/TripContext";
 
+console.log("[AppConfig] MODULE LOADED");
+
 const DEFAULT = {
   ocrEnabled:       false,
   photosEnabled:    false,
@@ -13,12 +15,13 @@ const DEFAULT = {
 const AppConfigContext = createContext(DEFAULT);
 
 export function AppConfigProvider({ children }) {
+  console.log("[AppConfig] AppConfigProvider RENDERING");
   const { activeTrip } = useTrip();
   const [config, setConfig] = useState(DEFAULT);
 
   useEffect(() => {
     if (!activeTrip?.id) {
-      console.log("[AppConfig] no activeTrip, using defaults:", DEFAULT);
+      console.log("[AppConfig] no activeTrip, using defaults");
       setConfig(DEFAULT);
       return;
     }
@@ -28,21 +31,12 @@ export function AppConfigProvider({ children }) {
     const unsub = onSnapshot(
       doc(db, "trips", activeTrip.id),
       (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          const features = data.features || {};
-          console.log("[AppConfig] trip doc received, features field:", features);
-          console.log("[AppConfig] full trip data keys:", Object.keys(data));
-          const merged = { ...DEFAULT, ...features };
-          console.log("[AppConfig] final config:", merged);
-          setConfig(merged);
-        } else {
-          console.log("[AppConfig] trip doc does not exist, using defaults");
-          setConfig(DEFAULT);
-        }
+        const features = snap.exists() ? (snap.data().features || {}) : {};
+        console.log("[AppConfig] features from Firestore:", features);
+        setConfig({ ...DEFAULT, ...features });
       },
       (err) => {
-        console.error("[AppConfig] onSnapshot error:", err);
+        console.error("[AppConfig] error:", err);
         setConfig(DEFAULT);
       }
     );
