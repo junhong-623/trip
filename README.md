@@ -1,5 +1,5 @@
 <div align="center">
-
+[![Live App](https://img.shields.io/badge/Live%20App-jeeprod.com-blue)](https://www.jeeprod.com/matetrip)
 <img src="public/icons/icon-192.png" width="96" height="96" style="border-radius: 20px" />
 
 # 伴旅 MateTrip
@@ -10,8 +10,8 @@
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com)
-[![Railway](https://img.shields.io/badge/Backend-Railway-0B0D0E?style=flat-square&logo=railway)](https://railway.app)
 [![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?style=flat-square&logo=pwa)](https://web.dev/progressive-web-apps/)
+[![Live App](https://img.shields.io/badge/Live%20App-jeeprod.com-blue)](https://www.jeeprod.com/matetrip)
 
 [English README](README_EN.md)
 
