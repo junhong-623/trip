@@ -15,6 +15,9 @@
 
 [English README](README_EN.md)
 
+[To Know More](https://www.jeeprod.com/matetrip/intro)
+[Offical Website](https://www.jeeprod.com/matetrip/)
+
 </div>
 
 ---
@@ -189,6 +192,6 @@ npm run build
 
 **MateTrip 伴旅** · 算清一路琐碎，存下全程风景。
 
-Built with React · Firebase · Railway · Cloudinary
+Built with React · Firebase · Cloudinary
 
 </div>
