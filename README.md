@@ -1,5 +1,4 @@
 <div align="center">
-[![Live App](https://img.shields.io/badge/Live%20App-jeeprod.com-blue)](https://www.jeeprod.com/matetrip)
 <img src="public/icons/icon-192.png" width="96" height="96" style="border-radius: 20px" />
 
 # 伴旅 MateTrip
